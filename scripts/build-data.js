@@ -133,10 +133,15 @@ function fetchPositions(accountId, bridgePort) {
       const units = p.units || 0;
       const quoteCcy = getQuoteCcy(symbol);
 
-      // Compute P&L ourselves — bridge unrealizedPnl is in quote currency,
-      // not USD, for non-USD instruments (JP225=JPY, USDCHF=CHF, etc.)
+      // Per-position P&L: prefer broker's unrealizedPnl (includes swaps +
+      // commissions). Fall back to currency-converted computation for
+      // non-USD instruments where the broker returns null.
       let pnlUsd = null;
-      if (entry > 0 && current > 0 && units > 0) {
+      const brokerPnl = p.unrealizedPnl ?? p.pnl ?? null;
+      if (brokerPnl != null) {
+        pnlUsd = brokerPnl;
+      } else if (entry > 0 && current > 0 && units > 0) {
+        // Fallback: compute and convert for non-USD instruments
         const rawPnl = side === "SELL"
           ? (entry - current) * units
           : (current - entry) * units;
@@ -155,6 +160,24 @@ function fetchPositions(accountId, bridgePort) {
     });
   } catch {
     return [];
+  }
+}
+/* ── Bridge account fetcher ───────────────────────────────────── */
+function fetchAccount(accountId, bridgePort) {
+  try {
+    const raw = execSync(
+      `curl -s --max-time 8 "http://localhost:${bridgePort}/account?accountId=${accountId}"`,
+      { encoding: "utf-8" }
+    );
+    if (!raw || !raw.trim()) return null;
+    const d = JSON.parse(raw);
+    if (!d.success || !d.account) return null;
+    return {
+      balance: d.account.balance || 0,
+      equity: d.account.equity || d.account.balance || 0,
+    };
+  } catch {
+    return null;
   }
 }
 const HISTORY_MAX_ENTRIES = 500;
@@ -562,12 +585,18 @@ function buildAccountData(account, history) {
   const engineState = loadEngineState(account.suffix, account.label);
   const h4Scans = loadH4Scans(account.suffix, account.label);
 
-  // SOURCE OF TRUTH: cTrader balance & equity from the engine state file.
-  // The engine writes these directly from cTrader, so they ARE accurate even
-  // though the per-trade r_multiple values it logs to JSONL are not.
-  const currentBalance = engineState?.balance ?? STARTING_BALANCE;
-  const currentEquity  = engineState?.equity  ?? currentBalance;
+  // SOURCE OF TRUTH: broker balance & equity queried live from the bridge.
+  // Never compute equity — the broker's number includes all fees, swaps,
+  // and actual fill prices. Any computation will drift.
+  const brokerAccount = fetchAccount(account.accountId, account.bridgePort);
+  const currentBalance = brokerAccount?.balance ?? engineState?.balance ?? STARTING_BALANCE;
+  const currentEquity  = brokerAccount?.equity  ?? engineState?.equity  ?? currentBalance;
   const realizedPnl = currentBalance - STARTING_BALANCE;
+  if (brokerAccount) {
+    console.log(`  [${account.label}] Broker balance=$${currentBalance.toFixed(2)}, equity=$${currentEquity.toFixed(2)}`);
+  } else {
+    console.log(`  [${account.label}] Bridge unavailable, using engine state fallback`);
+  }
 
   // Append the live snapshot to the persisted history (only if changed).
   // history is mutated in place; we get back the per-account list.
