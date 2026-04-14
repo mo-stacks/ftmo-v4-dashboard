@@ -659,7 +659,7 @@ function OpenPositions({ account, mob }) {
 
 function Watchlist({ account, mob }) {
   if (!account?.engineState) return null;
-  const { watchlist: rawWatchlist, recentRemovals } = account.engineState;
+  const { watchlist: rawWatchlist, recentRemovals = [] } = account.engineState;
 
   // Sort by quality score descending — this is the priority queue.
   // When a position slot opens, the highest-scored entry fires first.
