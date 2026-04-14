@@ -4,7 +4,6 @@ import {
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
 import { ACCOUNTS, ACCOUNT_KEYS, LAST_UPDATED } from "./tradeData.js";
-import { useSupabaseData } from "./useSupabaseData.js";
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -203,7 +202,7 @@ function TabBar({ activeTab, onChange, mob }) {
 
 /* ── main dashboard (5-account summary) ──────────────────────── */
 
-function MainDashboard({ mob, onSelectAccount, liveData }) {
+function MainDashboard({ mob, onSelectAccount }) {
   const accounts = ACCOUNT_KEYS.map(k => ACCOUNTS[k]);
 
   // Aggregate totals — all $ figures from cTrader (TRUTH)
@@ -1291,62 +1290,6 @@ function AccountView({ account, mob }) {
 export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
-  const { accounts: sbAccounts, loading: sbLoading, lastUpdated: sbUpdated } = useSupabaseData();
-
-  // Overlay live Supabase equity onto static ACCOUNTS meta
-  // This updates balance/equity in place without breaking any component references
-  useMemo(() => {
-    if (!sbAccounts) return;
-    for (const key of ACCOUNT_KEYS) {
-      if (sbAccounts[key] && ACCOUNTS[key]) {
-        const sb = sbAccounts[key];
-        const acct = ACCOUNTS[key];
-
-        // Overlay live equity (from broker, always accurate)
-        acct.meta.currentBalance = sb.meta.currentBalance;
-        acct.meta.currentEquity = sb.meta.currentEquity;
-        acct.meta.openPnl = sb.meta.openPnl;
-        acct.meta.realizedPnl = sb.meta.realizedPnl;
-
-        // Overlay trades if Supabase has more than static build
-        if (sb.trades && sb.trades.length >= acct.trades.length) {
-          acct.trades = sb.trades;
-          acct.meta.totalTrades = sb.meta.totalTrades;
-          acct.meta.wins = sb.meta.wins;
-          acct.meta.losses = sb.meta.losses;
-          acct.meta.totalR = sb.meta.totalR;
-          acct.meta.avgR = sb.meta.avgR;
-          acct.meta.maxDD = sb.meta.maxDD;
-        }
-
-        // Overlay equity curve if Supabase has snapshots
-        if (sb.balanceCurve && sb.balanceCurve.length > 0) {
-          acct.balanceCurve = sb.balanceCurve;
-        }
-
-        // Overlay positions but preserve build-time P&L for null broker values
-        const sbPos = sb.openPositions;
-        if (sbPos && sbPos.length > 0) {
-          const buildPos = acct.openPositions || [];
-          acct.openPositions = sbPos.map(sp => {
-            if (sp.unrealizedPnl != null) return sp;
-            const bp = buildPos.find(b => b.symbol === sp.symbol);
-            return { ...sp, unrealizedPnl: bp?.unrealizedPnl ?? null };
-          });
-        }
-
-        // Overlay engine state selectively — keep static fields that
-        // Supabase doesn't populate (highestEodBalance, trailingDdFloor, etc.)
-        if (sb.engineState && acct.engineState) {
-          const keep = acct.engineState;
-          for (const [k, v] of Object.entries(sb.engineState)) {
-            if (v != null) keep[k] = v;
-          }
-        }
-        if (sb.status === "ACTIVE") acct.status = "ACTIVE";
-      }
-    }
-  }, [sbAccounts]);
 
   const isMain = activeTab === "main";
   const currentAccount = isMain ? null : ACCOUNTS[activeTab];
@@ -1361,9 +1304,6 @@ export default function App() {
         </h1>
         <p style={{ color: "#888", margin: "4px 0 14px", fontSize: 13 }}>
           Production + 4 strategy variants · Live Demo Accounts · 31 instruments · 1% risk per trade
-          {sbUpdated && <span style={{ color: "#4ade80", marginLeft: 8 }}>
-            {" "}· Live {new Date(sbUpdated).toLocaleTimeString()}
-          </span>}
         </p>
 
         {/* Tab navigation */}
