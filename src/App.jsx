@@ -3,7 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
-import { ACCOUNTS as STATIC_ACCOUNTS, ACCOUNT_KEYS as STATIC_KEYS, LAST_UPDATED } from "./tradeData.js";
+import { ACCOUNTS, ACCOUNT_KEYS, LAST_UPDATED } from "./tradeData.js";
 import { useSupabaseData } from "./useSupabaseData.js";
 
 /* ── helpers ─────────────────────────────────────────────────── */
@@ -160,15 +160,13 @@ const StatusPill = ({ status }) => {
 
 /* ── tab navigation ──────────────────────────────────────────── */
 
-function TabBar({ activeTab, onChange, mob, accounts }) {
-  const accts = accounts || STATIC_ACCOUNTS;
-  const keys = Object.keys(accts);
+function TabBar({ activeTab, onChange, mob }) {
   const tabs = [
     { key: "main", label: "Main Dashboard", color: "#fff" },
-    ...keys.map(k => ({
+    ...ACCOUNT_KEYS.map(k => ({
       key: k,
-      label: accts[k]?.label || k,
-      color: accts[k]?.color || "#888",
+      label: ACCOUNTS[k].label,
+      color: ACCOUNTS[k].color,
     })),
   ];
 
@@ -205,9 +203,8 @@ function TabBar({ activeTab, onChange, mob, accounts }) {
 
 /* ── main dashboard (5-account summary) ──────────────────────── */
 
-function MainDashboard({ mob, onSelectAccount, accounts: acctMap, liveTs }) {
-  const keys = acctMap ? Object.keys(acctMap) : STATIC_KEYS;
-  const accounts = keys.map(k => (acctMap || STATIC_ACCOUNTS)[k]).filter(Boolean);
+function MainDashboard({ mob, onSelectAccount, liveData }) {
+  const accounts = ACCOUNT_KEYS.map(k => ACCOUNTS[k]);
 
   // Aggregate totals — all $ figures from cTrader (TRUTH)
   const totals = useMemo(() => {
@@ -452,7 +449,7 @@ function MainDashboard({ mob, onSelectAccount, accounts: acctMap, liveTs }) {
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>{row?.label || `Point ${label}`}</div>
                         {payload.map(p => (
                           <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
-                            {(acctMap || STATIC_ACCOUNTS)[p.dataKey]?.label || p.dataKey}: ${p.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {ACCOUNTS[p.dataKey]?.label}: ${p.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         ))}
                       </div>
@@ -1294,12 +1291,22 @@ function AccountView({ account, mob }) {
 export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
-  const { accounts: sbAccounts, loading: sbLoading, lastUpdated: sbUpdated, ACCOUNT_KEYS: sbKeys } = useSupabaseData();
+  const { accounts: sbAccounts, loading: sbLoading, lastUpdated: sbUpdated } = useSupabaseData();
 
-  // Use Supabase data when available, fall back to static build data
-  const ACCOUNTS = sbAccounts || STATIC_ACCOUNTS;
-  const ACCOUNT_KEYS = sbKeys || STATIC_KEYS;
-  const dataSource = sbAccounts ? "supabase" : "static";
+  // Overlay live Supabase equity onto static ACCOUNTS meta
+  // This updates balance/equity in place without breaking any component references
+  useMemo(() => {
+    if (!sbAccounts) return;
+    for (const key of ACCOUNT_KEYS) {
+      if (sbAccounts[key] && ACCOUNTS[key]) {
+        ACCOUNTS[key].meta.currentBalance = sbAccounts[key].meta.currentBalance;
+        ACCOUNTS[key].meta.currentEquity = sbAccounts[key].meta.currentEquity;
+        ACCOUNTS[key].meta.openPnl = sbAccounts[key].meta.openPnl;
+        ACCOUNTS[key].meta.realizedPnl = sbAccounts[key].meta.realizedPnl;
+        ACCOUNTS[key].openPositions = sbAccounts[key].openPositions || ACCOUNTS[key].openPositions;
+      }
+    }
+  }, [sbAccounts]);
 
   const isMain = activeTab === "main";
   const currentAccount = isMain ? null : ACCOUNTS[activeTab];
@@ -1317,15 +1324,14 @@ export default function App() {
           {sbUpdated && <span style={{ color: "#4ade80", marginLeft: 8 }}>
             {" "}· Live {new Date(sbUpdated).toLocaleTimeString()}
           </span>}
-          {sbLoading && !sbAccounts && <span style={{ color: "#facc15", marginLeft: 8 }}> · Loading...</span>}
         </p>
 
         {/* Tab navigation */}
-        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} accounts={ACCOUNTS} />
+        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} />
 
         {/* Content */}
         {isMain
-          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} accounts={ACCOUNTS} liveTs={sbUpdated} />
+          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} />
           : <AccountView account={currentAccount} mob={mob} />
         }
 
