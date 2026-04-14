@@ -1335,11 +1335,15 @@ export default function App() {
           });
         }
 
-        // Overlay engine state (watchlist, status)
-        if (sb.engineState) {
-          acct.engineState = { ...acct.engineState, ...sb.engineState };
-          acct.status = sb.status || acct.status;
+        // Overlay engine state selectively — keep static fields that
+        // Supabase doesn't populate (highestEodBalance, trailingDdFloor, etc.)
+        if (sb.engineState && acct.engineState) {
+          const keep = acct.engineState;
+          for (const [k, v] of Object.entries(sb.engineState)) {
+            if (v != null) keep[k] = v;
+          }
         }
+        if (sb.status === "ACTIVE") acct.status = "ACTIVE";
       }
     }
   }, [sbAccounts]);
