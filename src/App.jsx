@@ -3,27 +3,8 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
-import { ACCOUNTS, ACCOUNT_KEYS, LAST_UPDATED } from "./tradeData.js";
-
-/* ── live equity from Gist (updates every 60s) ───────────────── */
-
-const EQUITY_GIST_URL = "https://gist.githubusercontent.com/mo-stacks/cbc9ffca1bc88112315c88908aa4e384/raw/ftmo_live_equity.json";
-
-function useLiveEquity() {
-  const [data, setData] = useState(null);
-  useEffect(() => {
-    const fetch_ = () => {
-      fetch(EQUITY_GIST_URL + "?t=" + Date.now())
-        .then(r => r.json())
-        .then(d => setData(d))
-        .catch(() => {});
-    };
-    fetch_();
-    const id = setInterval(fetch_, 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return data;
-}
+import { ACCOUNTS as STATIC_ACCOUNTS, ACCOUNT_KEYS as STATIC_KEYS, LAST_UPDATED } from "./tradeData.js";
+import { useSupabaseData } from "./useSupabaseData.js";
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -223,7 +204,8 @@ function TabBar({ activeTab, onChange, mob }) {
 /* ── main dashboard (5-account summary) ──────────────────────── */
 
 function MainDashboard({ mob, onSelectAccount, accounts: acctMap, liveTs }) {
-  const accounts = ACCOUNT_KEYS.map(k => (acctMap || ACCOUNTS)[k]);
+  const keys = acctMap ? Object.keys(acctMap) : STATIC_KEYS;
+  const accounts = keys.map(k => (acctMap || STATIC_ACCOUNTS)[k]).filter(Boolean);
 
   // Aggregate totals — all $ figures from cTrader (TRUTH)
   const totals = useMemo(() => {
@@ -1310,31 +1292,15 @@ function AccountView({ account, mob }) {
 export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
-  const liveEquity = useLiveEquity();
+  const { accounts: sbAccounts, loading: sbLoading, lastUpdated: sbUpdated, ACCOUNT_KEYS: sbKeys } = useSupabaseData();
 
-  // Overlay live equity from Gist onto static ACCOUNTS data
-  const liveAccounts = useMemo(() => {
-    if (!liveEquity?.accounts) return ACCOUNTS;
-    const merged = { ...ACCOUNTS };
-    for (const [key, live] of Object.entries(liveEquity.accounts)) {
-      if (merged[key] && live.balance && !live.error) {
-        merged[key] = {
-          ...merged[key],
-          meta: {
-            ...merged[key].meta,
-            currentBalance: live.balance,
-            currentEquity: live.equity,
-            openPnl: live.openPnl,
-            realizedPnl: Math.round((live.balance - 100000) * 100) / 100,
-          },
-        };
-      }
-    }
-    return merged;
-  }, [liveEquity]);
+  // Use Supabase data when available, fall back to static build data
+  const ACCOUNTS = sbAccounts || STATIC_ACCOUNTS;
+  const ACCOUNT_KEYS = sbKeys || STATIC_KEYS;
+  const dataSource = sbAccounts ? "supabase" : "static";
 
   const isMain = activeTab === "main";
-  const currentAccount = isMain ? null : liveAccounts[activeTab];
+  const currentAccount = isMain ? null : ACCOUNTS[activeTab];
 
   return (
     <div style={{ background: "#0f0f1a", color: "#e0e0e0", minHeight: "100vh", padding: mob ? "12px" : "20px", fontFamily: "system-ui,-apple-system,sans-serif" }}>
@@ -1346,9 +1312,10 @@ export default function App() {
         </h1>
         <p style={{ color: "#888", margin: "4px 0 14px", fontSize: 13 }}>
           Production + 4 strategy variants · Live Demo Accounts · 31 instruments · 1% risk per trade
-          {liveEquity?.updated && <span style={{ color: "#4ade80", marginLeft: 8 }}>
-            {" "}· Live {new Date(liveEquity.updated).toLocaleTimeString()}
+          {sbUpdated && <span style={{ color: "#4ade80", marginLeft: 8 }}>
+            {" "}· Live {new Date(sbUpdated).toLocaleTimeString()}
           </span>}
+          {sbLoading && !sbAccounts && <span style={{ color: "#facc15", marginLeft: 8 }}> · Loading...</span>}
         </p>
 
         {/* Tab navigation */}
@@ -1356,7 +1323,7 @@ export default function App() {
 
         {/* Content */}
         {isMain
-          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} accounts={liveAccounts} liveTs={liveEquity?.updated} />
+          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} accounts={ACCOUNTS} liveTs={sbUpdated} />
           : <AccountView account={currentAccount} mob={mob} />
         }
 
