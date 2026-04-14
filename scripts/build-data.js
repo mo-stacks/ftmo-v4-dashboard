@@ -191,7 +191,7 @@ const ACCOUNTS = [
     label: "Production",
     fullLabel: "ICS V1 (Production)",
     suffix: "_ftmo_prod",
-    accountId: "46828378",
+    accountId: "46992359",
     displayId: "17083057",  // cTrader frontend account number
     bridgePort: 3100,
     color: "#4ade80",

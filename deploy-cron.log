@@ -1,0 +1,647 @@
+  [Production] Loaded engine state (21 watchlist, 700 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 483 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$103206.46
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 430 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 473 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104072.90
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 425 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101159.35
+
+Saved balance history: 1657 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (288.4 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$1080.08
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1184.39
+  Delta        balance=$  101172.36  realized=+$1172.36  open=$-13.01
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 574 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css    0.07 kB │ gzip:   0.09 kB
+dist/assets/index-A5mdbsLm.js   878.61 kB │ gzip: 224.11 kB
+
+✓ built in 962ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Build Completed in .vercel/output [7s]
+Retrieving project…
+Deploying mo-stacks-projects/ftmo-v4-dashboard
+Uploading [--------------------] (0.0B/859.5KB)
+Uploading [=====---------------] (225.5KB/859.5KB)
+Uploading [==========----------] (433.5KB/859.5KB)
+Uploading [===============-----] (657.5KB/859.5KB)
+Uploading [====================] (859.5KB/859.5KB)
+Error: Resource is limited - try again in 24 hours (more than 100, code: "api-deployments-free-per-day").
+--- 2026-04-14 00:09:18 UTC ---
+Loaded balance history: 5 accounts, 1660 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 701 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 484 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104075.94
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 431 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 473 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104089.07
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 425 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101798.51
+
+Saved balance history: 1662 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (289.4 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$1949.56
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1200.56
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$626.15
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-CoLr2EiL.js   1,069.82 kB │ gzip: 273.95 kB
+
+✓ built in 426ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+WARNING! Build not running on Vercel. System environment variables will not be available.
+Installing dependencies...
+
+up to date in 272ms
+
+10 packages are looking for funding
+  run `npm fund` for details
+
+> ftmo-v4-dashboard@1.0.0 build
+> node scripts/build-data.js && vite build
+
+Loaded balance history: 5 accounts, 1662 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 701 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 484 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104084.91
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 431 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 473 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104083.23
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 425 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101159.35
+
+Saved balance history: 1664 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (289.7 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$1958.53
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1194.72
+  Delta        balance=$  101172.36  realized=+$1172.36  open=$-13.01
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-DHSxbqpU.js   1,070.03 kB │ gzip: 273.93 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 280ms
+Build Completed in .vercel/output [5s]
+Retrieving project…
+Deploying mo-stacks-projects/ftmo-v4-dashboard
+Uploading [--------------------] (0.0B/1MB)
+Uploading [=====---------------] (273.5KB/1MB)
+Uploading [==========----------] (529.5KB/1MB)
+Uploading [===============-----] (785.5KB/1MB)
+Uploading [====================] (1.0MB/1MB)
+Error: Resource is limited - try again in 24 hours (more than 100, code: "api-deployments-free-per-day").
+--- 2026-04-14 00:24:33 UTC ---
+Loaded balance history: 5 accounts, 1664 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 703 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 486 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104365.36
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 433 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 475 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104020.24
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 427 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101683.00
+
+Saved balance history: 1666 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (290.8 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2238.98
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1131.73
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$510.64
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-DFtgHhPk.js   1,071.08 kB │ gzip: 274.06 kB
+
+✓ built in 325ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+WARNING! Build not running on Vercel. System environment variables will not be available.
+Installing dependencies...
+
+up to date in 281ms
+
+10 packages are looking for funding
+  run `npm fund` for details
+
+> ftmo-v4-dashboard@1.0.0 build
+> node scripts/build-data.js && vite build
+
+Loaded balance history: 5 accounts, 1666 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 703 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 486 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104364.11
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 433 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 475 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104012.64
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 427 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101159.35
+
+Saved balance history: 1668 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (291.1 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2237.73
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1124.13
+  Delta        balance=$  101172.36  realized=+$1172.36  open=$-13.01
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-DpVsny7j.js   1,071.29 kB │ gzip: 274.04 kB
+
+✓ built in 292ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Build Completed in .vercel/output [5s]
+Retrieving project…
+Deploying mo-stacks-projects/ftmo-v4-dashboard
+Uploading [--------------------] (0.0B/1MB)
+Uploading [=====---------------] (273.5KB/1MB)
+Uploading [==========----------] (529.5KB/1MB)
+Uploading [===============-----] (801.5KB/1MB)
+Uploading [====================] (1.0MB/1MB)
+Inspect: https://vercel.com/mo-stacks-projects/ftmo-v4-dashboard/3tbah8Mt2WLkNV4wvGkBPUXwnT5o [3s]
+Production: https://ftmo-v4-dashboard-4vkwr8zkv-mo-stacks-projects.vercel.app [3s]
+https://ftmo-v4-dashboard-4vkwr8zkv-mo-stacks-projects.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 6 deployment files...
+Building: Using prebuilt build artifacts from .vercel/output
+Building: Learn more: https://vercel.link/build-output-api
+Building: Deploying outputs...
+[2K[1A[2K[GProduction: https://ftmo-v4-dashboard-4vkwr8zkv-mo-stacks-projects.vercel.app [7s]
+Completing...
+Aliased: https://ftmo-v4-dashboard.vercel.app [7s]
+> Tip: Run `npx plugins add vercel/vercel-plugin` to enhance your agent experience
+Deploy complete at 00:24:52 UTC
+--- 2026-04-14 00:30:00 UTC ---
+Loaded balance history: 5 accounts, 1668 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 703 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 486 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104414.26
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 433 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 475 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104046.59
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 427 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101734.10
+
+Saved balance history: 1670 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (291.3 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2287.88
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1158.08
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$561.74
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-BFROh8mL.js   1,071.51 kB │ gzip: 274.07 kB
+
+✓ built in 675ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+WARNING! Build not running on Vercel. System environment variables will not be available.
+Installing dependencies...
+
+up to date in 860ms
+
+10 packages are looking for funding
+  run `npm fund` for details
+
+> ftmo-v4-dashboard@1.0.0 build
+> node scripts/build-data.js && vite build
+
+Loaded balance history: 5 accounts, 1670 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 703 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 486 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104412.26
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 434 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 475 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104047.09
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 427 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101736.62
+
+Saved balance history: 1672 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (291.5 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2285.88
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1158.58
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$564.26
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-D8C8kDCn.js   1,071.72 kB │ gzip: 274.07 kB
+
+✓ built in 577ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Build Completed in .vercel/output [7s]
+Retrieving project…
+Deploying mo-stacks-projects/ftmo-v4-dashboard
+Uploading [--------------------] (0.0B/1MB)
+Uploading [=====---------------] (273.5KB/1MB)
+Uploading [==========----------] (529.5KB/1MB)
+Uploading [===============-----] (801.5KB/1MB)
+Uploading [====================] (1.0MB/1MB)
+Error: Resource is limited - try again in 24 hours (more than 100, code: "api-deployments-free-per-day").
+--- 2026-04-14 00:39:52 UTC ---
+Loaded balance history: 5 accounts, 1672 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 704 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 487 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104580.98
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 434 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 476 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$103167.77
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 428 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101739.12
+
+Saved balance history: 1674 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (292.2 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2454.60
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$279.26
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$566.76
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-DdZUI7CD.js   1,072.36 kB │ gzip: 274.17 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 570ms
+WARNING! Build not running on Vercel. System environment variables will not be available.
+Installing dependencies...
+
+up to date in 744ms
+
+10 packages are looking for funding
+  run `npm fund` for details
+
+> ftmo-v4-dashboard@1.0.0 build
+> node scripts/build-data.js && vite build
+
+Loaded balance history: 5 accounts, 1674 total snapshots
+
+Fetching FX rates for P&L conversion...
+FX rates (USD/CCY): JPY=159.4390, CAD=1.3788, CHF=0.7838, GBP=0.7405, EUR=0.8504, AUD=1.4091, NZD=1.7041
+
+Processing Production...
+  [Production] Loaded 29 CLOSE + 1 PARTIAL events (engine-claimed PnL: $1200.35 — NOT authoritative)
+  [Production] Loaded engine state (21 watchlist, 704 M10 scans)
+  [Production] Parsed 60 H4 scans, deduped to 26 (showing last 10)
+  [Production] Broker balance=$100000.00, equity=$100000.00
+
+Processing Alpha...
+  [Alpha] Loaded 15 CLOSE + 2 PARTIAL events (engine-claimed PnL: $-1903.07 — NOT authoritative)
+  [Alpha] Loaded engine state (14 watchlist, 487 M10 scans)
+  [Alpha] Parsed 40 H4 scans, deduped to 24 (showing last 10)
+  [Alpha] Broker balance=$102126.38, equity=$104596.08
+
+Processing Bravo...
+  [Bravo] Loaded 6 CLOSE + 2 PARTIAL events (engine-claimed PnL: $4057.66 — NOT authoritative)
+  [Bravo] Loaded engine state (13 watchlist, 434 M10 scans)
+  [Bravo] Parsed 36 H4 scans, deduped to 24 (showing last 10)
+  [Bravo] Broker balance=$101210.20, equity=$101210.20
+
+Processing Charlie...
+  [Charlie] Loaded 16 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-1185.70 — NOT authoritative)
+  [Charlie] Loaded engine state (12 watchlist, 476 M10 scans)
+  [Charlie] Parsed 36 H4 scans, deduped to 25 (showing last 10)
+  [Charlie] Broker balance=$102888.51, equity=$104106.45
+
+Processing Delta...
+  [Delta] Loaded 5 CLOSE + 3 PARTIAL events (engine-claimed PnL: $-351.42 — NOT authoritative)
+  [Delta] Loaded engine state (13 watchlist, 428 M10 scans)
+  [Delta] Parsed 33 H4 scans, deduped to 22 (showing last 10)
+  [Delta] Broker balance=$101172.36, equity=$101745.81
+
+Saved balance history: 1676 total snapshots
+
+Wrote 5 accounts (71 total trades) to src/tradeData.js (292.5 KB)
+
+PnL source: cTrader balance (TRUTH). Engine r_multiple values are display-only.
+  Production   balance=$  100000.00  realized=+$0.00  open=+$0.00
+  Alpha        balance=$  102126.38  realized=+$2126.38  open=+$2469.70
+  Bravo        balance=$  101210.20  realized=+$1210.20  open=+$0.00
+  Charlie      balance=$  102888.51  realized=+$2888.51  open=+$1217.94
+  Delta        balance=$  101172.36  realized=+$1172.36  open=+$573.45
+vite v8.0.3 building client environment for production...
+[2Ktransforming...✓ 616 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.48 kB │ gzip:   0.31 kB
+dist/assets/index-8G5Thxja.css      0.07 kB │ gzip:   0.09 kB
+dist/assets/index-CL7_hihF.js   1,072.58 kB │ gzip: 274.19 kB
+
+✓ built in 389ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Build Completed in .vercel/output [6s]
+Retrieving project…
+Deploying mo-stacks-projects/ftmo-v4-dashboard
+Uploading [--------------------] (0.0B/1MB)
+Uploading [=====---------------] (273.5KB/1MB)
+Uploading [==========----------] (529.5KB/1MB)
+Uploading [===============-----] (801.5KB/1MB)
+Uploading [====================] (1.0MB/1MB)
+Inspect: https://vercel.com/mo-stacks-projects/ftmo-v4-dashboard/5QqzMRasF1xPvuGriEXK2TTwZ3ee [4s]
+Production: https://ftmo-v4-dashboard-fam7vrqxh-mo-stacks-projects.vercel.app [4s]
+https://ftmo-v4-dashboard-fam7vrqxh-mo-stacks-projects.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 6 deployment files...
+Building: Using prebuilt build artifacts from .vercel/output
+Building: Learn more: https://vercel.link/build-output-api
+Building: Deploying outputs...
+[2K[1A[2K[GProduction: https://ftmo-v4-dashboard-fam7vrqxh-mo-stacks-projects.vercel.app [8s]
+Completing...
+Aliased: https://ftmo-v4-dashboard.vercel.app [8s]
+> Tip: Run `npx plugins add vercel/vercel-plugin` to enhance your agent experience
+Deploy complete at 00:40:17 UTC

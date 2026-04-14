@@ -1,0 +1,6 @@
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  background: #0f0f1a;
+  min-height: 100vh;
+}

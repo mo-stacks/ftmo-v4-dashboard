@@ -160,13 +160,15 @@ const StatusPill = ({ status }) => {
 
 /* ── tab navigation ──────────────────────────────────────────── */
 
-function TabBar({ activeTab, onChange, mob }) {
+function TabBar({ activeTab, onChange, mob, accounts }) {
+  const accts = accounts || STATIC_ACCOUNTS;
+  const keys = Object.keys(accts);
   const tabs = [
     { key: "main", label: "Main Dashboard", color: "#fff" },
-    ...ACCOUNT_KEYS.map(k => ({
+    ...keys.map(k => ({
       key: k,
-      label: ACCOUNTS[k].label,
-      color: ACCOUNTS[k].color,
+      label: accts[k]?.label || k,
+      color: accts[k]?.color || "#888",
     })),
   ];
 
@@ -450,7 +452,7 @@ function MainDashboard({ mob, onSelectAccount, accounts: acctMap, liveTs }) {
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>{row?.label || `Point ${label}`}</div>
                         {payload.map(p => (
                           <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
-                            {ACCOUNTS[p.dataKey]?.label}: ${p.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {(acctMap || STATIC_ACCOUNTS)[p.dataKey]?.label || p.dataKey}: ${p.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         ))}
                       </div>
@@ -1319,7 +1321,7 @@ export default function App() {
         </p>
 
         {/* Tab navigation */}
-        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} />
+        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} accounts={ACCOUNTS} />
 
         {/* Content */}
         {isMain
