@@ -99,6 +99,12 @@ export function useSupabaseData() {
           qualityScore: e.qualityScore,
           barsElapsed: e.barsElapsed,
           maxEntryBars: e.maxEntryBars,
+          stopPrice: e.stopPrice,
+          targetPrice: e.targetPrice,
+          ageMinutes: e.ageMinutes,
+          pullbackDepth: e.pullbackDepth,
+          status: e.status,
+          barsRemaining: e.barsRemaining,
         }));
 
         // Open positions
