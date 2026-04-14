@@ -704,8 +704,8 @@ function Watchlist({ account, mob }) {
                         {e.setupType}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 10px", color: "#f87171", fontFamily: "monospace", fontSize: 12 }}>{e.stopPrice}</td>
-                    <td style={{ padding: "8px 10px", color: "#4ade80", fontFamily: "monospace", fontSize: 12 }}>{e.targetPrice}</td>
+                    <td style={{ padding: "8px 10px", color: "#f87171", fontFamily: "monospace", fontSize: 12 }}>{e.stopPrice != null ? e.stopPrice.toFixed(e.stopPrice < 10 ? 4 : 2) : "—"}</td>
+                    <td style={{ padding: "8px 10px", color: "#4ade80", fontFamily: "monospace", fontSize: 12 }}>{e.targetPrice != null ? e.targetPrice.toFixed(e.targetPrice < 10 ? 4 : 2) : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>
                       <span style={{ color: e.qualityScore >= 0.6 ? "#4ade80" : e.qualityScore >= 0.5 ? "#facc15" : "#888" }}>
                         {(e.qualityScore * 100).toFixed(0)}%
@@ -715,7 +715,7 @@ function Watchlist({ account, mob }) {
                       {e.barsElapsed}/{e.maxEntryBars}
                     </td>
                     <td style={{ padding: "8px 10px", fontSize: 12 }}>{fmtAge(e.ageMinutes)}</td>
-                    <td style={{ padding: "8px 10px", fontSize: 12 }}>{(e.pullbackDepth * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "8px 10px", fontSize: 12 }}>{e.pullbackDepth != null ? `${(e.pullbackDepth * 100).toFixed(1)}%` : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>
                       <span style={{ background: blocked ? "#f8717122" : "#facc1522", color: blocked ? "#f87171" : "#facc15", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                         {blocked ? "BLOCKED" : e.status}
