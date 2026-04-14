@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const REFRESH_INTERVAL = 60 * 1000; // 1 minute
 const STARTING_BALANCE = 100000;
 
 const VARIANT_META = {
@@ -196,7 +196,15 @@ export function useSupabaseData() {
   useEffect(() => {
     fetchData();
     const id = setInterval(fetchData, REFRESH_INTERVAL);
-    return () => clearInterval(id);
+    const onFocus = () => fetchData();
+    const onVisible = () => { if (!document.hidden) fetchData(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [fetchData]);
 
   return { accounts, loading, lastUpdated, error, ACCOUNT_KEYS, refetch: fetchData };
