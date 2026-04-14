@@ -3,7 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
-import { ACCOUNTS, ACCOUNT_KEYS, LAST_UPDATED } from "./tradeData.js";
+import { useSupabaseData } from "./useSupabaseData.js";
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -159,7 +159,7 @@ const StatusPill = ({ status }) => {
 
 /* ── tab navigation ──────────────────────────────────────────── */
 
-function TabBar({ activeTab, onChange, mob }) {
+function TabBar({ activeTab, onChange, mob, ACCOUNTS, ACCOUNT_KEYS }) {
   const tabs = [
     { key: "main", label: "Main Dashboard", color: "#fff" },
     ...ACCOUNT_KEYS.map(k => ({
@@ -202,7 +202,7 @@ function TabBar({ activeTab, onChange, mob }) {
 
 /* ── main dashboard (5-account summary) ──────────────────────── */
 
-function MainDashboard({ mob, onSelectAccount }) {
+function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
   const accounts = ACCOUNT_KEYS.map(k => ACCOUNTS[k]);
 
   // Aggregate totals — all $ figures from cTrader (TRUTH)
@@ -1290,6 +1290,23 @@ function AccountView({ account, mob }) {
 export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
+  const { accounts: ACCOUNTS, loading, lastUpdated: LAST_UPDATED, error, ACCOUNT_KEYS } = useSupabaseData();
+
+  if (loading) {
+    return (
+      <div style={{ background: "#0f0f1a", color: "#888", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui" }}>
+        Loading dashboard data...
+      </div>
+    );
+  }
+
+  if (error || !ACCOUNTS) {
+    return (
+      <div style={{ background: "#0f0f1a", color: "#f87171", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui" }}>
+        Failed to load data: {error || "No data available"}
+      </div>
+    );
+  }
 
   const isMain = activeTab === "main";
   const currentAccount = isMain ? null : ACCOUNTS[activeTab];
@@ -1307,11 +1324,11 @@ export default function App() {
         </p>
 
         {/* Tab navigation */}
-        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} />
+        <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
 
         {/* Content */}
         {isMain
-          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} />
+          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
           : <AccountView account={currentAccount} mob={mob} />
         }
 
