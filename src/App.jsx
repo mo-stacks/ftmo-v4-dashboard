@@ -1299,11 +1299,22 @@ export default function App() {
     if (!sbAccounts) return;
     for (const key of ACCOUNT_KEYS) {
       if (sbAccounts[key] && ACCOUNTS[key]) {
+        // Overlay live equity (from broker, always accurate)
         ACCOUNTS[key].meta.currentBalance = sbAccounts[key].meta.currentBalance;
         ACCOUNTS[key].meta.currentEquity = sbAccounts[key].meta.currentEquity;
         ACCOUNTS[key].meta.openPnl = sbAccounts[key].meta.openPnl;
         ACCOUNTS[key].meta.realizedPnl = sbAccounts[key].meta.realizedPnl;
-        ACCOUNTS[key].openPositions = sbAccounts[key].openPositions || ACCOUNTS[key].openPositions;
+        // Overlay positions but preserve build-time P&L for null broker values
+        const sbPos = sbAccounts[key].openPositions;
+        if (sbPos && sbPos.length > 0) {
+          const buildPos = ACCOUNTS[key].openPositions || [];
+          ACCOUNTS[key].openPositions = sbPos.map(sp => {
+            if (sp.unrealizedPnl != null) return sp;
+            // Broker returned null — find build-time P&L for this symbol
+            const bp = buildPos.find(b => b.symbol === sp.symbol);
+            return { ...sp, unrealizedPnl: bp?.unrealizedPnl ?? null };
+          });
+        }
       }
     }
   }, [sbAccounts]);
