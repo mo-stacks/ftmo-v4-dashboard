@@ -1299,21 +1299,46 @@ export default function App() {
     if (!sbAccounts) return;
     for (const key of ACCOUNT_KEYS) {
       if (sbAccounts[key] && ACCOUNTS[key]) {
+        const sb = sbAccounts[key];
+        const acct = ACCOUNTS[key];
+
         // Overlay live equity (from broker, always accurate)
-        ACCOUNTS[key].meta.currentBalance = sbAccounts[key].meta.currentBalance;
-        ACCOUNTS[key].meta.currentEquity = sbAccounts[key].meta.currentEquity;
-        ACCOUNTS[key].meta.openPnl = sbAccounts[key].meta.openPnl;
-        ACCOUNTS[key].meta.realizedPnl = sbAccounts[key].meta.realizedPnl;
+        acct.meta.currentBalance = sb.meta.currentBalance;
+        acct.meta.currentEquity = sb.meta.currentEquity;
+        acct.meta.openPnl = sb.meta.openPnl;
+        acct.meta.realizedPnl = sb.meta.realizedPnl;
+
+        // Overlay trades if Supabase has more than static build
+        if (sb.trades && sb.trades.length >= acct.trades.length) {
+          acct.trades = sb.trades;
+          acct.meta.totalTrades = sb.meta.totalTrades;
+          acct.meta.wins = sb.meta.wins;
+          acct.meta.losses = sb.meta.losses;
+          acct.meta.totalR = sb.meta.totalR;
+          acct.meta.avgR = sb.meta.avgR;
+          acct.meta.maxDD = sb.meta.maxDD;
+        }
+
+        // Overlay equity curve if Supabase has snapshots
+        if (sb.balanceCurve && sb.balanceCurve.length > 0) {
+          acct.balanceCurve = sb.balanceCurve;
+        }
+
         // Overlay positions but preserve build-time P&L for null broker values
-        const sbPos = sbAccounts[key].openPositions;
+        const sbPos = sb.openPositions;
         if (sbPos && sbPos.length > 0) {
-          const buildPos = ACCOUNTS[key].openPositions || [];
-          ACCOUNTS[key].openPositions = sbPos.map(sp => {
+          const buildPos = acct.openPositions || [];
+          acct.openPositions = sbPos.map(sp => {
             if (sp.unrealizedPnl != null) return sp;
-            // Broker returned null — find build-time P&L for this symbol
             const bp = buildPos.find(b => b.symbol === sp.symbol);
             return { ...sp, unrealizedPnl: bp?.unrealizedPnl ?? null };
           });
+        }
+
+        // Overlay engine state (watchlist, status)
+        if (sb.engineState) {
+          acct.engineState = { ...acct.engineState, ...sb.engineState };
+          acct.status = sb.status || acct.status;
         }
       }
     }
