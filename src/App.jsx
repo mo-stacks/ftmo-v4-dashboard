@@ -17,9 +17,18 @@ const useIsMobile = () => {
   return m;
 };
 
+// Profit factor — outcome-driven per backtest parity
+// (run_validation_suite.py:310). Only t.outcome === "win" contributes to
+// grossWin; only t.outcome === "loss" contributes to grossLoss. Phantom,
+// timeout, breakeven, and unknown outcomes are excluded from BOTH sides,
+// so they do not distort the ratio.
 const pf = (trades) => {
-  const grossWin = trades.filter(t => t.r > 0).reduce((s, t) => s + t.r, 0);
-  const grossLoss = Math.abs(trades.filter(t => t.r <= 0).reduce((s, t) => s + t.r, 0));
+  const grossWin = trades
+    .filter(t => t.outcome === "win" && t.r != null)
+    .reduce((s, t) => s + t.r, 0);
+  const grossLoss = Math.abs(trades
+    .filter(t => t.outcome === "loss" && t.r != null)
+    .reduce((s, t) => s + t.r, 0));
   return grossLoss > 0 ? Math.round((grossWin / grossLoss) * 100) / 100 : grossWin > 0 ? Infinity : 0;
 };
 
@@ -1002,12 +1011,22 @@ function TradePerformance({ account, mob }) {
     );
   }
 
-  const wins = trades.filter(t => t.r > 0).length;
-  const losses = trades.length - wins;
+  // Outcome-driven counts — backtest parity (run_validation_suite.py:310).
+  // Denominator for WR is wins + losses only. Phantom (reconcile-race D-017),
+  // timeout, breakeven, and unknown rows are excluded from BOTH numerator and
+  // denominator, and surfaced via the Flagged count card below.
+  const wins = trades.filter(t => t.outcome === "win").length;
+  const losses = trades.filter(t => t.outcome === "loss").length;
+  const breakevens = trades.filter(t => t.outcome === "breakeven").length;
+  const flagged = trades.filter(t => t.outcome === "phantom"
+                                   || t.outcome === "timeout"
+                                   || t.outcome === "unknown").length;
+  const denom = wins + losses;
+  // totalR/avgR unchanged from prior semantics (null r_multiple coerces to 0 in +)
   const totalR = Math.round(trades.reduce((s, t) => s + t.r, 0) * 100) / 100;
   const avgR = trades.length ? Math.round((totalR / trades.length) * 100) / 100 : 0;
   const profitFactor = pf(trades);
-  const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
+  const winRate = denom ? Math.round((wins / denom) * 100) : 0;
 
   // Live $ figures: from cTrader balance directly (TRUTH).
   const finalBal = account.meta.currentBalance ?? 100000;
@@ -1063,7 +1082,7 @@ function TradePerformance({ account, mob }) {
 
       {/* Stat cards: Win Rate / Expectancy / PF are engine-view (R-based);
           Realized $ / Live Balance are TRUTH (cTrader). */}
-      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,1fr)" : "repeat(6,1fr)", gap: 10, marginBottom: 8 }}>
         <Card
           label="Realized P&L"
           value={`${realizedPnl >= 0 ? "+" : ""}$${realizedPnl.toFixed(2)}`}
@@ -1084,10 +1103,20 @@ function TradePerformance({ account, mob }) {
         />
         <Card
           label="Win Rate"
-          value={trades.length > 0 && wins !== null ? `${winRate}%` : "—"}
-          sub={trades.length > 0 ? `${trades.length} closed (${wins}W / ${losses}L)` : "No trades"}
+          value={denom > 0 ? `${winRate}%` : "—"}
+          sub={denom > 0 ? `${denom} graded (${wins}W / ${losses}L)` : "No graded trades"}
           color={winRate >= 50 ? "#4ade80" : winRate > 0 ? "#facc15" : "#f87171"}
         />
+        <div
+          title="Phantom closes + timeout exits + unknown-outcome rows excluded from WR denominator per backtest parity"
+          style={{ background: "#1a1a2e", borderRadius: 10, padding: 14, border: "1px solid #2a2a3e", color: flagged > 0 ? "#facc15" : "#888" }}
+        >
+          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Flagged</div>
+          <div style={{ fontSize: 22, fontWeight: 600, marginTop: 2 }}>{flagged}</div>
+          <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+            Phantom/timeout/unknown · BE: {breakevens}
+          </div>
+        </div>
         <Card
           label="Return"
           value={realizedPnl !== 0 ? `${realizedPnl >= 0 ? "+" : ""}${((realizedPnl / 100000) * 100).toFixed(2)}%` : "—"}

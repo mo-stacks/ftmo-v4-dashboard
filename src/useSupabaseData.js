@@ -14,6 +14,49 @@ const VARIANT_META = {
 
 const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta"];
 
+/**
+ * Classify a trade_history row into an outcome bucket.
+ *
+ * Precedence (stop at first match):
+ *   1. phantom      — entry == exit AND not a partial close (reconcile-race artifact)
+ *   2. timeout      — exit_reason === "TIMEOUT"
+ *   3. r_multiple   — win / loss / breakeven driven by r sign
+ *   4. realized_pnl — fallback when r_multiple is NULL (broker_reconstructed rows)
+ *   5. unknown      — no signal available
+ *
+ * Win/loss definition matches backtest parity at
+ * backtest/run_validation_suite.py:310 where
+ *   wr = wins / (wins + losses) * 100
+ * and pos.trade.outcome ∈ {"win", "loss"} with the else branch carried
+ * as timeouts. This function expands the exclusion set to also cover
+ * phantom closes (D-017 reconcile-race signature) and unknown/breakeven
+ * rows — all EXCLUDED from WR denominator, never counted as losses.
+ */
+function classifyOutcome(t) {
+  if (
+    t.entry_price != null &&
+    t.exit_price != null &&
+    t.entry_price === t.exit_price &&
+    t.partial_hit !== true
+  ) {
+    return "phantom";
+  }
+  if (t.exit_reason === "TIMEOUT") {
+    return "timeout";
+  }
+  if (t.r_multiple != null) {
+    if (t.r_multiple > 0) return "win";
+    if (t.r_multiple < 0) return "loss";
+    return "breakeven";
+  }
+  if (t.realized_pnl != null) {
+    if (t.realized_pnl > 0) return "win";
+    if (t.realized_pnl < 0) return "loss";
+    return "breakeven";
+  }
+  return "unknown";
+}
+
 export function useSupabaseData() {
   const [accounts, setAccounts] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,15 +65,43 @@ export function useSupabaseData() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [stateRes, tradeRes, snapRes] = await Promise.all([
+      // Fetch account state + trades in parallel; balance_snapshots is paginated separately.
+      const [stateRes, tradeRes] = await Promise.all([
         supabase.from('account_state').select('*'),
         supabase.from('trade_history').select('*').order('exit_time', { ascending: false }).limit(500),
-        supabase.from('balance_snapshots').select('*').order('timestamp', { ascending: true }),
       ]);
 
       if (stateRes.error) throw stateRes.error;
       if (tradeRes.error) throw tradeRes.error;
-      if (snapRes.error) throw snapRes.error;
+
+      // balance_snapshots: Supabase REST default caps rows at 1000. Before this
+      // fix the fetch was unbounded + ordered ascending, which silently kept the
+      // OLDEST 1000 rows globally and cut off the equity curve at ~Apr 13.
+      // Fix: 90-day time window + descending-paged .range() loop + client-side
+      // reverse so downstream (App.jsx balanceCurve builder at lines 74-87)
+      // continues to receive chronologically-ascending rows.
+      const PAGE_SIZE = 1000;
+      const MAX_ROWS = 50000;
+      const cutoffIso = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const snapsAccum = [];
+      for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
+        const end = Math.min(offset + PAGE_SIZE - 1, MAX_ROWS - 1);
+        const pageRes = await supabase
+          .from('balance_snapshots')
+          .select('*')
+          .gte('timestamp', cutoffIso)
+          .order('timestamp', { ascending: false })
+          .range(offset, end);
+        if (pageRes.error) throw pageRes.error;
+        const page = pageRes.data || [];
+        snapsAccum.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
+      if (snapsAccum.length >= MAX_ROWS) {
+        console.warn(`balance_snapshots: hit MAX_ROWS safety cap (${MAX_ROWS}); oldest rows within the 90-day window may be truncated.`);
+      }
+      snapsAccum.reverse(); // newest-first → oldest-first (ascending) for charting
+      const snapRes = { data: snapsAccum, error: null };
 
       const accountData = {};
       for (const key of ACCOUNT_KEYS) {
@@ -59,11 +130,11 @@ export function useSupabaseData() {
             reason: t.exit_reason,
             score: t.quality_score,
             posId: t.position_id || "",
-            outcome: t.r_multiple > 0 ? "win" : t.r_multiple < 0 ? "loss" : "breakeven",
+            outcome: classifyOutcome(t),
           }));
 
         const wins = variantTrades.filter(t => t.outcome === "win").length;
-        const losses = variantTrades.length - wins;
+        const losses = variantTrades.filter(t => t.outcome === "loss").length;
         const tradesWithR = variantTrades.filter(t => t.r != null);
         const totalR = tradesWithR.length ? Math.round(tradesWithR.reduce((s, t) => s + t.r, 0) * 100) / 100 : null;
 
