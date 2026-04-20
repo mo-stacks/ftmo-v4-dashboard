@@ -1170,6 +1170,14 @@ function TradePerformance({ account, mob }) {
           )}
           <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginTop: 4 }}>
             {equityData.length} cTrader balance snapshot{equityData.length !== 1 ? "s" : ""} · sourced from live account
+            {account?.meta?.droppedSnapshots > 0 && (
+              <span
+                style={{ color: "#facc15", marginLeft: 6 }}
+                title="Rows where balance is 0 or NULL. Excluded from chart + DD math. Upstream publisher/engine data-quality investigation pending."
+              >
+                · {account.meta.droppedSnapshots} malformed snapshot{account.meta.droppedSnapshots !== 1 ? "s" : ""} excluded
+              </span>
+            )}
           </div>
         </>)}
 

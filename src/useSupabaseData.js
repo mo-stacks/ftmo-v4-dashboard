@@ -138,8 +138,17 @@ export function useSupabaseData() {
         const tradesWithR = variantTrades.filter(t => t.r != null);
         const totalR = tradesWithR.length ? Math.round(tradesWithR.reduce((s, t) => s + t.r, 0) * 100) / 100 : null;
 
-        // Equity curve from snapshots
-        const variantSnaps = snapRes.data.filter(s => s.variant === key);
+        // Equity curve from snapshots.
+        // After the 90-day pagination fix (commit 34258cf) exposed the full
+        // retained snapshot history, we observed pre-existing malformed rows
+        // where balance is 0 or NULL. These rendered as vertical spikes to $0
+        // and caused Max Drawdown to compute as 100% on every variant.
+        // Defensive filter: drop balance <= 0 / null rows before charting.
+        // Upstream root cause (why these rows exist at all) is out of scope
+        // here — goes to the publisher/engine data-quality worklist.
+        const rawVariantSnaps = snapRes.data.filter(s => s.variant === key);
+        const variantSnaps = rawVariantSnaps.filter(s => s.balance != null && s.balance > 0);
+        const droppedSnapshots = rawVariantSnaps.length - variantSnaps.length;
         let peak = STARTING_BALANCE;
         let maxDD = 0;
         const balanceCurve = variantSnaps.map((s, i) => {
@@ -223,6 +232,7 @@ export function useSupabaseData() {
             maxDD: Math.round(maxDD * 100) / 100,
             maxDailyDD: 0,
             historyPoints: balanceCurve.length,
+            droppedSnapshots,
           },
           engineState: {
             updated: state.updated_at,
