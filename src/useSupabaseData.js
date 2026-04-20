@@ -14,6 +14,20 @@ const VARIANT_META = {
 
 const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta"];
 
+// Known-incident carve-outs. Remove entries once root cause is fixed
+// upstream and you want to re-verify the dashboard against raw data.
+const EXCLUDED_INCIDENTS = [
+  {
+    variant: "production",
+    start:   "2026-04-16T00:00:00Z",
+    end:     "2026-04-16T02:00:00Z",
+    reason:  "Bridge dual-subscription to decommissioned FTMO account " +
+             "17083057 inflated equity via phantom floating_pnl. " +
+             "Balance unaffected. Upstream fix: clean bridge " +
+             "disconnect protocol on account swap.",
+  },
+];
+
 /**
  * Classify a trade_history row into an outcome bucket.
  *
@@ -151,11 +165,24 @@ export function useSupabaseData() {
         // Upstream root cause (why these rows exist at all) is out of scope
         // here — goes to the publisher/engine data-quality worklist.
         const rawVariantSnaps = snapRes.data.filter(s => s.variant === key);
-        const variantSnaps = rawVariantSnaps.filter(s =>
+
+        // Stage 1: drop null/zero-value rows (publisher bridge-down fallback).
+        const validSnaps = rawVariantSnaps.filter(s =>
           s.balance != null && s.balance > 0 &&
-          s.equity != null && s.equity > 0
+          s.equity  != null && s.equity  > 0
         );
-        const droppedSnapshots = rawVariantSnaps.length - variantSnaps.length;
+        const droppedSnapshots = rawVariantSnaps.length - validSnaps.length;
+
+        // Stage 2: drop rows inside known-incident windows (see
+        // EXCLUDED_INCIDENTS at module top for the rationale per window).
+        const variantSnaps = validSnaps.filter(s =>
+          !EXCLUDED_INCIDENTS.some(e =>
+            e.variant === key &&
+            s.timestamp >= e.start &&
+            s.timestamp <= e.end
+          )
+        );
+        const excludedIncidents = validSnaps.length - variantSnaps.length;
         let peak = STARTING_BALANCE;
         let maxDD = 0;
         const balanceCurve = variantSnaps.map((s, i) => {
@@ -240,6 +267,7 @@ export function useSupabaseData() {
             maxDailyDD: 0,
             historyPoints: balanceCurve.length,
             droppedSnapshots,
+            excludedIncidents,
           },
           engineState: {
             updated: state.updated_at,

@@ -1207,6 +1207,14 @@ function TradePerformance({ account, mob }) {
                 · {account.meta.droppedSnapshots} malformed snapshot{account.meta.droppedSnapshots !== 1 ? "s" : ""} excluded
               </span>
             )}
+            {account?.meta?.excludedIncidents > 0 && (
+              <span
+                style={{ color: "#facc15", marginLeft: 6 }}
+                title="Rows inside a known-incident window (see EXCLUDED_INCIDENTS in useSupabaseData.js). Removed once upstream root cause is fixed and re-verified."
+              >
+                · {account.meta.excludedIncidents} row{account.meta.excludedIncidents !== 1 ? "s" : ""} excluded from known incident (2026-04-16 bridge overlap)
+              </span>
+            )}
           </div>
         </>)}
 
