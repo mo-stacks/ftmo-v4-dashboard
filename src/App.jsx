@@ -213,6 +213,10 @@ function TabBar({ activeTab, onChange, mob, ACCOUNTS, ACCOUNT_KEYS }) {
 
 function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
   const accounts = ACCOUNT_KEYS.map(k => ACCOUNTS[k]);
+  // Curve mode for the comparison chart. "balance" (realized only) is the
+  // default — smoother; "equity" (balance + floating P&L) is opt-in via the
+  // toggle above the chart card.
+  const [chartMode, setChartMode] = useState("balance");
 
   // Aggregate totals — all $ figures from cTrader (TRUTH)
   const totals = useMemo(() => {
@@ -256,7 +260,8 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
     if (allTimestamps.size === 0) return [];
     const sortedTs = Array.from(allTimestamps).sort();
 
-    // For each timestamp, look up each account's most-recent balance
+    // For each timestamp, look up each account's most-recent balance or equity
+    // depending on the chartMode toggle (balance default; equity opt-in).
     const data = sortedTs.map((ts, i) => {
       const row = { idx: i, ts, label: fmtSnapshotTime(ts) };
       for (const a of accounts) {
@@ -264,7 +269,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
         // Find the latest snapshot at-or-before this timestamp
         let value = 100000;
         for (const p of curve) {
-          if (p.ts <= ts) value = p.bal;
+          if (p.ts <= ts) value = chartMode === "balance" ? p.bal : p.eq;
           else break;
         }
         row[a.key] = value;
@@ -272,7 +277,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
       return row;
     });
     return data;
-  }, [accounts]);
+  }, [accounts, chartMode]);
 
   return (
     <>
@@ -436,7 +441,31 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
       {/* Equity comparison chart (only if we have at least one snapshot point) */}
       {equityCompare.length > 0 && (
         <>
-          <SectionHeader>Equity Curve Comparison</SectionHeader>
+          <SectionHeader>{chartMode === "balance" ? "Balance" : "Equity"} Curve Comparison</SectionHeader>
+          {/* Balance / Equity toggle — balance (realized only) is the default;
+              equity (balance + floating P&L) is opt-in. Style mirrors the
+              existing tab-button pattern in TradePerformance. */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+            {[["balance", "Balance"], ["equity", "Equity"]].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setChartMode(v)}
+                title={v === "balance" ? "Realized P&L only — smoother curve" : "Balance + floating P&L — moves with open positions"}
+                style={{
+                  padding: "7px 18px",
+                  borderRadius: 6,
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  background: chartMode === v ? "#4ade80" : "#1a1a2e",
+                  color: chartMode === v ? "#000" : "#888",
+                }}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
           <div style={{ background: "#1a1a2e", borderRadius: 12, border: "1px solid #2a2a3e", padding: "16px 12px 6px", marginBottom: 14 }}>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={equityCompare}>

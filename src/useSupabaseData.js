@@ -143,11 +143,18 @@ export function useSupabaseData() {
         // retained snapshot history, we observed pre-existing malformed rows
         // where balance is 0 or NULL. These rendered as vertical spikes to $0
         // and caused Max Drawdown to compute as 100% on every variant.
-        // Defensive filter: drop balance <= 0 / null rows before charting.
+        // Defensive filter: drop rows with balance OR equity <= 0 / null so
+        // both chart modes (Balance and Equity) render cleanly. Preflight
+        // against live Supabase confirmed equity<=0 rows exist and share
+        // the same full-zero signature as balance<=0 rows (117 total).
+        // droppedSnapshots is the combined count for display.
         // Upstream root cause (why these rows exist at all) is out of scope
         // here — goes to the publisher/engine data-quality worklist.
         const rawVariantSnaps = snapRes.data.filter(s => s.variant === key);
-        const variantSnaps = rawVariantSnaps.filter(s => s.balance != null && s.balance > 0);
+        const variantSnaps = rawVariantSnaps.filter(s =>
+          s.balance != null && s.balance > 0 &&
+          s.equity != null && s.equity > 0
+        );
         const droppedSnapshots = rawVariantSnaps.length - variantSnaps.length;
         let peak = STARTING_BALANCE;
         let maxDD = 0;
