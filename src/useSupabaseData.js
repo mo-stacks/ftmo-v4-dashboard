@@ -5,11 +5,11 @@ const REFRESH_INTERVAL = 60 * 1000; // 1 minute
 const STARTING_BALANCE = 100000;
 
 const VARIANT_META = {
-  production: { label: "Production", fullLabel: "FTMO_PROD (V2 + Plan A/B/C)", color: "#4ade80", displayId: "17102428", accountId: "47151641" },
-  alpha:      { label: "Alpha",      fullLabel: "Alpha (V1 CONTROL)",          color: "#60a5fa", displayId: "5797573",  accountId: "46915262" },
-  bravo:      { label: "Bravo",      fullLabel: "Bravo (V1-stale + Trail-C5)", color: "#c084fc", displayId: "5797576",  accountId: "46915271" },
-  charlie:    { label: "Charlie",    fullLabel: "Charlie (V1-stale + Trail-C5)", color: "#facc15", displayId: "5797577",  accountId: "46915274" },
-  delta:      { label: "Delta",      fullLabel: "Delta (V1-stale + Trail-C5)", color: "#f87171", displayId: "5797579",  accountId: "46915276" },
+  production: { label: "Production", fullLabel: "FTMO_PROD — half-fib stop, no trail",       color: "#4ade80", displayId: "17102428", accountId: "47151641" },
+  alpha:      { label: "Alpha",      fullLabel: "Alpha — classifier stop, no trail (control)", color: "#60a5fa", displayId: "5797573",  accountId: "46915262" },
+  bravo:      { label: "Bravo",      fullLabel: "Bravo — classifier stop + trail-C5 (forex)", color: "#c084fc", displayId: "5797576",  accountId: "46915271" },
+  charlie:    { label: "Charlie",    fullLabel: "Charlie — classifier stop + trail-C5",       color: "#facc15", displayId: "5797577",  accountId: "46915274" },
+  delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + trail-C5 (+crypto)", color: "#f87171", displayId: "5797579",  accountId: "46915276" },
 };
 
 const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta"];
@@ -32,16 +32,21 @@ const VARIANT_CONFIG = {
   production: {
     quality_gate:          58,
     entry_delay_bars:      0,
-    partial_trigger_r:     0.6,             // Plan A D3 (Codex partial): 0.5 → 0.6
-    partial_pct:           0.20,            // Plan A D3 (Codex partial): 0.30 → 0.20
+    partial_trigger_r:     0.6,
+    partial_pct:           0.20,
     ranking_method:        "quality_score",
-    risk_pct:              0.0080,          // Phase 1 (engine restarted post-2026-04-24)
-    stop_mode:             "pivot_half_fib",// V2
-    trail:                 "off",           // D1.A trail-off (Phase 1)
-    slot_mode:             "risk_based",    // YAML; cosmetic (count-cap dominant)
-    max_floating_risk_pct: 0.045,           // Plan C; gated by MAX_POSITIONS=5
-    universe_filter:       "full (44 syms, no crypto)",
-    notes:                 "V2 + Plan A/B/C + Phase 1 + EMERGENCY $90k STATIC floor + Track 1 _sequence seed + Stocks LIMIT",
+    risk_pct:              0.0080,
+    stop_mode:             "half-fib of pullback",
+    trail:                 "off",
+    slot_mode:             "risk_based",
+    max_floating_risk_pct: 0.045,
+    universe_filter:       "44 syms · no crypto",
+    notes:
+      "Initial TP: 1.272 Fib extension. " +
+      "Move stop to break-even ONLY after MFE crosses +1.0R (decoupled from partial — survives noise wicks). " +
+      "Stock entries use LIMIT @ entry-bar open with 600s expiry (caps slippage on RTH tape). " +
+      "Hard $90k static max-loss floor (FTMO 2-Step rule — was trailing, switched to static after death-spiral). " +
+      "On every engine restart, classifier _sequence is pre-seeded from 1+ year of cTrader bars (avoids cold-start IBO bias).",
   },
   alpha: {
     quality_gate:      58,
@@ -49,12 +54,16 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,              // Pre-Phase-1 stale (engine restart 2026-04-18)
-    stop_mode:         "classifier",        // V1 stale (pre-3f79783 pivot_half_fib port)
-    trail:             "off",               // CONTROL — no trail
+    risk_pct:          0.0165,
+    stop_mode:         "classifier-computed",
+    trail:             "off",
     slot_mode:         "risk_based",
-    universe_filter:   "full (36 syms incl. ETHUSD)",
-    notes:             "V1 CONTROL — 1.272 Fib TP, no trail. Engine code pre-3f79783 (Apr 18 restart, NOT yet on Phase 1).",
+    universe_filter:   "36 syms · incl. ETHUSD",
+    notes:
+      "Initial TP: 1.272 Fib extension. " +
+      "Move stop to break-even at +0.5R (coincident with partial). " +
+      "No trail — A/B control variant by design (any 'V2-style' behavior here would be coincidence). " +
+      "Engine has NOT been restarted since 2026-04-18, so it is running the older classifier-stop code (pre-half-fib-port) and the older 1.65% risk dial — not the 0.80% Phase 1 deploy that landed Apr 24 on Production.",
   },
   bravo: {
     quality_gate:      58,
@@ -62,12 +71,17 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,              // Pre-Phase-1 stale
-    stop_mode:         "classifier",        // V1-stale
-    trail:             "C5 (act 60% / 10% trail / 12R ceiling)",
+    risk_pct:          0.0165,
+    stop_mode:         "classifier-computed",
+    trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
-    universe_filter:   "forex_only (17 syms)",
-    notes:             "V1-stale + Trail-C5 hybrid (classifier SL + post-partial trail concurrently). Forex-only.",
+    universe_filter:   "17 forex pairs",
+    notes:
+      "Initial TP: 1.272 Fib extension. " +
+      "Move stop to break-even at +0.5R (coincident with partial). " +
+      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
+      "Forex-only universe (no stocks/indices/metals/commodities). " +
+      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
   },
   charlie: {
     quality_gate:      58,
@@ -76,11 +90,16 @@ const VARIANT_CONFIG = {
     partial_pct:       0.30,
     ranking_method:    "quality_score",
     risk_pct:          0.0165,
-    stop_mode:         "classifier",
-    trail:             "C5 (act 60% / 10% trail / 12R ceiling)",
+    stop_mode:         "classifier-computed",
+    trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
-    universe_filter:   "full (35 syms)",
-    notes:             "V1-stale + Trail-C5 hybrid. Full universe.",
+    universe_filter:   "35 syms",
+    notes:
+      "Initial TP: 1.272 Fib extension. " +
+      "Move stop to break-even at +0.5R (coincident with partial). " +
+      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
+      "Full universe (forex + indices + metals + commodities + stocks). " +
+      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
   },
   delta: {
     quality_gate:      58,
@@ -89,11 +108,16 @@ const VARIANT_CONFIG = {
     partial_pct:       0.30,
     ranking_method:    "quality_score",
     risk_pct:          0.0165,
-    stop_mode:         "classifier",
-    trail:             "C5 (act 60% / 10% trail / 12R ceiling)",
+    stop_mode:         "classifier-computed",
+    trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
-    universe_filter:   "full (36 syms incl. ETHUSD)",
-    notes:             "V1-stale + Trail-C5 hybrid. Full universe + ETHUSD.",
+    universe_filter:   "36 syms · incl. ETHUSD",
+    notes:
+      "Initial TP: 1.272 Fib extension. " +
+      "Move stop to break-even at +0.5R (coincident with partial). " +
+      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
+      "Full universe + ETHUSD (only variant currently allowed crypto). " +
+      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
   },
 };
 
