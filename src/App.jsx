@@ -402,21 +402,46 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
         </div>
       </div>
 
-      {/* Variant config comparison */}
+      {/* Variant config comparison — sourced from useSupabaseData.js
+          VARIANT_CONFIG (per-variant truth, refreshed on every Rule-2 deploy).
+          Columns prioritized to surface ACTUAL per-variant differences:
+          Q-gate / Partial / Risk / Stop / Trail / Universe / Notes. */}
       <SectionHeader>Variant Configuration</SectionHeader>
       <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #333" }}>
-                {["Variant", "Quality Gate", "Entry Delay", "Partial Trigger", "Partial %", "Ranking Method"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "10px 12px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                {[
+                  ["Variant",   "Account label and color"],
+                  ["Q Gate",    "Quality score gate (signal admission threshold)"],
+                  ["Partial",   "Partial-close trigger and size (e.g. 20%@0.6R = close 20% at +0.6R MFE)"],
+                  ["Risk",      "Per-trade risk as % of balance (engine constant; restart-bound)"],
+                  ["Stop",      "Stop placement strategy (classifier = V1, pivot_half_fib = V2)"],
+                  ["Trail",     "Trailing-stop mode (off / C5 = act-60% / 10%-trail / 12R-ceiling)"],
+                  ["Universe",  "Active instrument set"],
+                  ["Notes",     "Active deploys and engine-version state"],
+                ].map(([h, title]) => (
+                  <th key={h} title={title}
+                      style={{ textAlign: "left", padding: "10px 12px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {accounts.map(a => {
                 const c = a.config || {};
+                const partialStr = (c.partial_pct != null && c.partial_trigger_r != null)
+                  ? `${(c.partial_pct * 100).toFixed(0)}%@${c.partial_trigger_r}R`
+                  : "—";
+                const riskStr = c.risk_pct != null ? `${(c.risk_pct * 100).toFixed(2)}%` : "—";
+                // Trail-active variants get a yellow "C5" badge so the contrast
+                // with off variants is obvious at a glance.
+                const trailIsOff = (c.trail || "").toLowerCase().startsWith("off");
+                const trailColor = trailIsOff ? "#888" : "#facc15";
+                // V1-stale + Phase-1-bypassed risk get a soft warning tint —
+                // they are KNOWN to be running pre-Phase-1 engine code.
+                const riskIsStale = c.risk_pct === 0.0165;
+                const riskColor = riskIsStale ? "#facc15" : "#4ade80";
                 return (
                   <tr key={a.key} style={{ borderBottom: "1px solid #1f1f2f" }}>
                     <td style={{ padding: "10px 12px" }}>
@@ -426,15 +451,24 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                       </div>
                     </td>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.quality_gate ?? "—"}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.entry_delay_bars ?? "—"} bars</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.partial_trigger_r ?? "—"}R</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.partial_pct ? `${(c.partial_pct * 100).toFixed(0)}%` : "—"}</td>
-                    <td style={{ padding: "10px 12px", color: "#60a5fa" }}>{c.ranking_method ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{partialStr}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: riskColor }}
+                        title={riskIsStale ? "Pre-Phase-1 engine — this engine has not been restarted post-2026-04-24 RISK_PCT=0.0080 deploy" : "Phase 1 (current production risk)"}>
+                      {riskStr}
+                    </td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#60a5fa" }}>{c.stop_mode ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: trailColor }}>{c.trail ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11 }}>{c.universe_filter ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11, lineHeight: 1.4 }}>{c.notes ?? "—"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+        <div style={{ padding: "8px 12px", borderTop: "1px solid #1f1f2f", fontSize: 11, color: "#555", textAlign: "center" }}>
+          Sourced from useSupabaseData.js · VARIANT_CONFIG ·
+          last refresh 2026-04-28 (post account-transition + telemetry fixes + Track 1 seed + Stocks LIMIT)
         </div>
       </div>
 
