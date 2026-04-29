@@ -105,47 +105,89 @@ export const VARIANT_CHANGE_EVENTS = {
   ],
   alpha: [
     {
-      ts: "2026-04-19T00:22:00Z",
+      ts: "2026-04-28T18:03:14Z",
       label: "Restart",
-      title: "Engine restart — current state, pre-3f79783",
+      title: "Today's staggered relaunch (post-Spotware-bridge crash-loop fix)",
       details:
-        "Engine restarted 2026-04-18 17:22 PDT, BEFORE commit 3f79783 (the V2 half-fib stop port that landed " +
-        "Apr 18 22:01 PDT). Running code: V1 classifier-stop, no trail (intentional A/B control variant). " +
-        "Engine has NOT been restarted since — none of the FTMO_PROD-only deploys (Phase 1, Plan A/B/C, " +
-        "telemetry fixes, Track 1, Stocks LIMIT) are active on this account.",
+        "Engine restarted 2026-04-28 18:03 UTC as part of the staggered Spotware-demo relaunch sequence " +
+        "(after crash-loop fix landed). High historical pm2 restart counter (835 cumulative) reflects pre-fix " +
+        "instability; post-fix uptime has been stable. " +
+        "Running code: V1 classifier-stop, no trail (intentional A/B control variant). " +
+        "Pre-Phase-1 risk dial (1.65%). NOT yet on the FTMO_PROD-only deploys (Phase 1, Plan A/B/C, telemetry, Stocks LIMIT).",
+    },
+    {
+      ts: "2026-04-29T01:30:00Z",
+      label: "Seed wired",
+      title: "Classifier _sequence pre-seeded on every restart from now on",
+      details:
+        "STATE_SEED_PATH env var wired into pm2 process. " +
+        "On engine restart, classifier _sequence is pre-loaded from runs/classifier_state/alpha_seed.json " +
+        "(36/36 symbols, schema v2, generated from 1+ year of cTrader history via Spotware bridge). " +
+        "Pre-fix watchlist showed 90% IBO (cold-start signature). Post-fix takes effect at next H4 scan boundary. " +
+        "pm2 dump.pm2 persisted; survives daemon restart.",
     },
   ],
   bravo: [
     {
-      ts: "2026-04-19T00:22:00Z",
+      ts: "2026-04-28T18:03:45Z",
       label: "Restart",
-      title: "Engine restart — current state, pre-3f79783",
+      title: "Today's staggered relaunch (post-Spotware-bridge crash-loop fix)",
       details:
-        "Engine restarted 2026-04-18 17:22 PDT, BEFORE commit 3f79783. Running code: V1 classifier-stop + Trail-C5 hybrid. " +
-        "Forex-only universe. Pre-Phase-1 risk dial (1.65%). " +
-        "Engine has NOT been restarted since. None of the FTMO_PROD-only deploys are active on this account.",
+        "Engine restarted 2026-04-28 18:03 UTC. High historical pm2 restart counter (631 cumulative) reflects " +
+        "pre-fix instability; post-fix uptime stable. " +
+        "Running code: V1 classifier-stop + Trail-C5 hybrid. Forex-only universe. Pre-Phase-1 risk dial (1.65%). " +
+        "NOT yet on the FTMO_PROD-only deploys.",
+    },
+    {
+      ts: "2026-04-29T01:31:00Z",
+      label: "Seed wired",
+      title: "Classifier _sequence pre-seeded on every restart from now on",
+      details:
+        "STATE_SEED_PATH env var wired into pm2 process. " +
+        "Seed file: runs/classifier_state/bravo_seed.json (17/17 forex pairs, schema v2). " +
+        "Pre-fix watchlist showed 80% IBO (cold-start signature). Post-fix takes effect at next H4 scan boundary.",
     },
   ],
   charlie: [
     {
-      ts: "2026-04-19T00:22:00Z",
+      ts: "2026-04-28T18:04:16Z",
       label: "Restart",
-      title: "Engine restart — current state, pre-3f79783",
+      title: "Today's staggered relaunch (post-Spotware-bridge crash-loop fix)",
       details:
-        "Engine restarted 2026-04-18 17:22 PDT, BEFORE commit 3f79783. Running code: V1 classifier-stop + Trail-C5 hybrid. " +
-        "Full universe. Pre-Phase-1 risk dial (1.65%). " +
-        "Engine has NOT been restarted since. None of the FTMO_PROD-only deploys are active on this account.",
+        "Engine restarted 2026-04-28 18:04 UTC. High historical pm2 restart counter (507 cumulative) reflects " +
+        "pre-fix instability; post-fix uptime stable. " +
+        "Running code: V1 classifier-stop + Trail-C5 hybrid. Full universe (no crypto). Pre-Phase-1 risk dial (1.65%). " +
+        "NOT yet on the FTMO_PROD-only deploys.",
+    },
+    {
+      ts: "2026-04-29T01:32:00Z",
+      label: "Seed wired",
+      title: "Classifier _sequence pre-seeded on every restart from now on",
+      details:
+        "STATE_SEED_PATH env var wired into pm2 process. " +
+        "Seed file: runs/classifier_state/charlie_seed.json (35/35 symbols, schema v2). " +
+        "Pre-fix watchlist showed 90% IBO (cold-start signature). Post-fix takes effect at next H4 scan boundary.",
     },
   ],
   delta: [
     {
-      ts: "2026-04-19T00:22:00Z",
+      ts: "2026-04-28T18:04:47Z",
       label: "Restart",
-      title: "Engine restart — current state, pre-3f79783",
+      title: "Today's staggered relaunch (post-Spotware-bridge crash-loop fix)",
       details:
-        "Engine restarted 2026-04-18 17:22 PDT, BEFORE commit 3f79783. Running code: V1 classifier-stop + Trail-C5 hybrid. " +
-        "Full universe + ETHUSD (only variant currently allowed crypto). Pre-Phase-1 risk dial (1.65%). " +
-        "Engine has NOT been restarted since. None of the FTMO_PROD-only deploys are active on this account.",
+        "Engine restarted 2026-04-28 18:04 UTC. High historical pm2 restart counter (424 cumulative) reflects " +
+        "pre-fix instability; post-fix uptime stable. " +
+        "Running code: V1 classifier-stop + Trail-C5 hybrid. Full universe + ETHUSD (only variant allowed crypto). " +
+        "Pre-Phase-1 risk dial (1.65%). NOT yet on the FTMO_PROD-only deploys.",
+    },
+    {
+      ts: "2026-04-29T01:33:00Z",
+      label: "Seed wired",
+      title: "Classifier _sequence pre-seeded on every restart from now on",
+      details:
+        "STATE_SEED_PATH env var wired into pm2 process. " +
+        "Seed file: runs/classifier_state/delta_seed.json (36/36 symbols, schema v2). " +
+        "Pre-fix watchlist showed 90% IBO (cold-start signature). Post-fix takes effect at next H4 scan boundary.",
     },
   ],
 };
