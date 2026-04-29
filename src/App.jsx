@@ -4,6 +4,7 @@ import {
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
 import { useSupabaseData } from "./useSupabaseData.js";
+import { VARIANT_CHANGE_EVENTS, attachChangeEvents } from "./changeEvents.js";
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -276,7 +277,9 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
       }
       return row;
     });
-    return data;
+    // Project change events onto the rows. Each row may now carry a
+    // `${variantKey}_changes` array consumed by the per-Line dot renderer.
+    return attachChangeEvents(data, VARIANT_CHANGE_EVENTS);
   }, [accounts, chartMode]);
 
   return (
@@ -536,14 +539,44 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     dataKey={a.key}
                     stroke={a.color}
                     strokeWidth={2}
-                    dot={false}
+                    // Per-point dot renderer: returns a marker SVG only for
+                    // points that carry a `${variantKey}_changes` array
+                    // (populated by attachChangeEvents). Hover the marker
+                    // for a native browser tooltip describing the change.
+                    dot={(props) => {
+                      const events = props?.payload?.[`${a.key}_changes`];
+                      if (!events?.length) {
+                        // Recharts requires a valid SVG element from this
+                        // function — return an empty <g> for non-event points
+                        // so React doesn't warn about returning null.
+                        return <g key={`empty-${props?.index ?? 0}`} />;
+                      }
+                      // Concatenate all events at this point for the tooltip
+                      const tipText = events
+                        .map(e => `[${e.label}] ${e.title}\n${e.details}`)
+                        .join("\n\n— — —\n\n");
+                      const cx = props.cx;
+                      const cy = props.cy;
+                      return (
+                        <g key={`mark-${a.key}-${props.index}`}>
+                          {/* outer ring for contrast against any line color */}
+                          <circle cx={cx} cy={cy} r={7} fill="#0a0a14" stroke={a.color} strokeWidth={2} />
+                          {/* inner solid disc — variant color */}
+                          <circle cx={cx} cy={cy} r={3.5} fill={a.color} stroke="#fff" strokeWidth={0.5} />
+                          {/* SVG-native tooltip — multiline text supported */}
+                          <title>{tipText}</title>
+                        </g>
+                      );
+                    }}
+                    activeDot={{ r: 5, strokeWidth: 1 }}
                     name={a.label}
                   />
                 ))}
               </LineChart>
             </ResponsiveContainer>
             <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginTop: 6 }}>
-              Sourced from live cTrader balance snapshots — appended on each dashboard rebuild
+              Markers (◉) on each curve = config changes that took effect at that timestamp · hover to see details ·
+              Sourced from live cTrader balance snapshots
             </div>
           </div>
         </>
