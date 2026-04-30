@@ -317,12 +317,39 @@ export function useSupabaseData() {
           )
         );
         const excludedIncidents = validSnaps.length - variantSnaps.length;
+
+        // Compute peak/maxDD over ALL snapshots (don't lose precision on DD)
         let peak = STARTING_BALANCE;
         let maxDD = 0;
-        const balanceCurve = variantSnaps.map((s, i) => {
+        for (const s of variantSnaps) {
           if (s.balance > peak) peak = s.balance;
           const dd = peak > 0 ? ((peak - s.balance) / peak) * 100 : 0;
           if (dd > maxDD) maxDD = dd;
+        }
+
+        // ── Decimate balanceCurve to ≤TARGET points for chart rendering ──
+        // Supabase publisher writes a snapshot every ~2 min; over 90 days that's
+        // ~65k rows per variant × 6 variants = 390k+ unique timestamps. Recharts
+        // renders these as SVG circles + path nodes — at scale, the browser tab
+        // ran out of memory, force-reloaded, and looked like "crashing every few
+        // seconds" to the user. Cap at 500 points per variant; bucket by even
+        // index so we keep first + last + a representative sample in between.
+        // Peak/maxDD computed above on FULL data so DD is precise even though
+        // the rendered curve is downsampled.
+        const TARGET_POINTS = 500;
+        const stride = Math.max(1, Math.ceil(variantSnaps.length / TARGET_POINTS));
+        const decimated = [];
+        for (let i = 0; i < variantSnaps.length; i += stride) decimated.push(variantSnaps[i]);
+        // Always include the last snapshot (current state)
+        if (variantSnaps.length > 0 &&
+            decimated[decimated.length - 1] !== variantSnaps[variantSnaps.length - 1]) {
+          decimated.push(variantSnaps[variantSnaps.length - 1]);
+        }
+        // Recompute running peak only over decimated points (for per-row dd field)
+        let runningPeak = STARTING_BALANCE;
+        const balanceCurve = decimated.map((s, i) => {
+          if (s.balance > runningPeak) runningPeak = s.balance;
+          const dd = runningPeak > 0 ? ((runningPeak - s.balance) / runningPeak) * 100 : 0;
           return {
             idx: i,
             ts: s.timestamp,
