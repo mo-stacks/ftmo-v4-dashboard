@@ -296,33 +296,87 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
   const bestVariant = sorted[0]?.label || "—";
   const worstVariant = sorted.length > 1 ? sorted[sorted.length - 1]?.label : "—";
 
-  // Equity comparison: builds a unified time-axis from snapshot histories.
-  // Uses each account's `balanceCurve` (sourced from cTrader balance, TRUTH).
+  // Equity comparison: hourly-bucket alignment across all variants.
+  //
+  // 2026-04-30 simplification (recurring "not updating properly" issue):
+  // Old algorithm unioned every variant's decimated timestamps into a
+  // sparse 3000-row grid where only 1/6 variants had data per row, then
+  // ran an O(N²) inner-search for "latest snapshot at-or-before" per
+  // (timestamp × variant). With ~3000 ts × 6 variants × 500-point curves
+  // that was ~9M iterations per render, AND the curves stepped weirdly
+  // because per-variant strided decimation picked different sample points.
+  //
+  // New algorithm: align all variants to a fixed hourly time grid
+  // covering the full snapshot window. For each hour bucket, take the
+  // last-balance-at-or-before via merge-walk (each variant's curve is
+  // already sorted ascending). O(buckets × variants) — for 90d × 6
+  // variants = 12,960 ops. Curves stay aligned because the grid is shared.
+  //
+  // The most recent snapshot is always included as a final row even if
+  // it falls between hour boundaries — guarantees the curve tip always
+  // reflects the latest data the hook has fetched.
   const equityCompare = useMemo(() => {
-    // Collect all unique snapshot timestamps across accounts
-    const allTimestamps = new Set();
-    for (const a of accounts) {
-      for (const p of (a.balanceCurve || [])) allTimestamps.add(p.ts);
-    }
-    if (allTimestamps.size === 0) return [];
-    const sortedTs = Array.from(allTimestamps).sort();
+    if (!accounts?.length) return [];
 
-    // For each timestamp, look up each account's most-recent balance or equity
-    // depending on the chartMode toggle (balance default; equity opt-in).
-    const data = sortedTs.map((ts, i) => {
-      const row = { idx: i, ts, label: fmtSnapshotTime(ts) };
-      for (const a of accounts) {
+    // Find the curve span across all accounts
+    let minTs = null, maxTs = null;
+    for (const a of accounts) {
+      const curve = a.balanceCurve || [];
+      if (!curve.length) continue;
+      const first = curve[0].ts, last = curve[curve.length - 1].ts;
+      if (!minTs || first < minTs) minTs = first;
+      if (!maxTs || last  > maxTs) maxTs = last;
+    }
+    if (!minTs || !maxTs) return [];
+
+    // Build hourly bucket grid (UTC hour boundaries)
+    const HOUR_MS = 60 * 60 * 1000;
+    const startMs = Math.floor(new Date(minTs).getTime() / HOUR_MS) * HOUR_MS;
+    const endMs   = new Date(maxTs).getTime();
+    const buckets = [];
+    for (let t = startMs; t <= endMs; t += HOUR_MS) {
+      buckets.push(new Date(t).toISOString());
+    }
+
+    // Per-variant cursor for merge-walk (avoids re-scanning from index 0)
+    const cursors = accounts.map(() => 0);
+
+    const data = buckets.map((bucketTs, i) => {
+      const row = { idx: i, ts: bucketTs, label: fmtSnapshotTime(bucketTs) };
+      accounts.forEach((a, vi) => {
         const curve = a.balanceCurve || [];
-        // Find the latest snapshot at-or-before this timestamp
-        let value = 100000;
-        for (const p of curve) {
-          if (p.ts <= ts) value = chartMode === "balance" ? p.bal : p.eq;
-          else break;
+        // Advance cursor to last point with p.ts <= bucketTs
+        let cur = cursors[vi];
+        while (cur + 1 < curve.length && curve[cur + 1].ts <= bucketTs) cur++;
+        cursors[vi] = cur;
+        // Use the cursor point if it's <= bucketTs, else fall back to start
+        const p = curve[cur];
+        if (p && p.ts <= bucketTs) {
+          row[a.key] = chartMode === "balance" ? p.bal : p.eq;
+        } else {
+          row[a.key] = 100000;  // FTMO starting balance fallback
         }
-        row[a.key] = value;
-      }
+      });
       return row;
     });
+
+    // Append a final row reflecting the most-recent snapshot per variant —
+    // ensures the curve tip is always current even if the hour bucket lags.
+    const lastRow = { idx: data.length, ts: maxTs, label: fmtSnapshotTime(maxTs) };
+    accounts.forEach(a => {
+      const curve = a.balanceCurve || [];
+      if (curve.length) {
+        const last = curve[curve.length - 1];
+        lastRow[a.key] = chartMode === "balance" ? last.bal : last.eq;
+      } else {
+        lastRow[a.key] = 100000;
+      }
+    });
+    // Only append if it's strictly past the last hourly bucket
+    if (data.length === 0 || data[data.length - 1].ts !== maxTs) {
+      data.push(lastRow);
+    }
+
     // Project change events onto the rows. Each row may now carry a
     // `${variantKey}_changes` array consumed by the per-Line dot renderer.
     return attachChangeEvents(data, VARIANT_CHANGE_EVENTS);
@@ -456,10 +510,11 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
         </div>
       </div>
 
-      {/* Variant config comparison — sourced from useSupabaseData.js
-          VARIANT_CONFIG (per-variant truth, refreshed on every Rule-2 deploy).
-          Columns prioritized to surface ACTUAL per-variant differences:
-          Q-gate / Partial / Risk / Stop / Trail / Universe / Notes. */}
+      {/* Variant config comparison — structured at-a-glance fields.
+          Full prose notes live offline in docs/variant_state.md (refreshed
+          on every Rule-2 deploy). Columns prioritized to surface ACTUAL
+          per-variant differences: Account / Q-gate / Partial / BE / Risk /
+          Stop / Trail / Universe. */}
       <SectionHeader>Variant Configuration</SectionHeader>
       <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
@@ -468,13 +523,14 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
               <tr style={{ borderBottom: "1px solid #333" }}>
                 {[
                   ["Variant",   "Account label and color"],
+                  ["Account",   "Account type + profit target (Challenge has Step-1 target; demos have none)"],
                   ["Q Gate",    "Quality score gate (signal admission threshold)"],
                   ["Partial",   "Partial-close trigger and size (e.g. 20%@0.6R = close 20% at +0.6R MFE)"],
+                  ["BE",        "Break-even rule: coincident with partial vs decoupled (D2 — BE moves only after MFE crosses N R)"],
                   ["Risk",      "Per-trade risk as % of balance (engine constant; restart-bound)"],
                   ["Stop",      "Stop placement strategy (classifier = V1, pivot_half_fib = V2)"],
                   ["Trail",     "Trailing-stop mode (off / C5 = act-60% / 10%-trail / 12R-ceiling)"],
                   ["Universe",  "Active instrument set"],
-                  ["Notes",     "Active deploys and engine-version state"],
                 ].map(([h, title]) => (
                   <th key={h} title={title}
                       style={{ textAlign: "left", padding: "10px 12px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
@@ -492,10 +548,13 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                 // with off variants is obvious at a glance.
                 const trailIsOff = (c.trail || "").toLowerCase().startsWith("off");
                 const trailColor = trailIsOff ? "#888" : "#facc15";
-                // V1-stale + Phase-1-bypassed risk get a soft warning tint —
-                // they are KNOWN to be running pre-Phase-1 engine code.
-                const riskIsStale = c.risk_pct === 0.0165;
-                const riskColor = riskIsStale ? "#facc15" : "#4ade80";
+                // Account type + target: Challenge gets a tinted badge so it
+                // stands out against the demo rows. Production = FTMO Free
+                // Demo (also tinted, lighter) since it's the V2/Plan-A/B/C
+                // reference. Spotware demos are neutral.
+                const isChallenge = c.account_type?.includes("Challenge");
+                const isProduction = c.account_type?.includes("FTMO Free");
+                const acctColor = isChallenge ? "#fb923c" : isProduction ? "#4ade80" : "#888";
                 return (
                   <tr key={a.key} style={{ borderBottom: "1px solid #1f1f2f" }}>
                     <td style={{ padding: "10px 12px" }}>
@@ -504,16 +563,22 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                         <span style={{ fontWeight: 600 }}>{a.label}</span>
                       </div>
                     </td>
+                    <td style={{ padding: "10px 12px", fontSize: 11 }}>
+                      <div style={{ color: acctColor, fontWeight: 600 }}>{c.account_type ?? "—"}</div>
+                      {c.target_pct != null && (
+                        <div style={{ color: "#888", marginTop: 2 }}>Target = {c.target_pct}%</div>
+                      )}
+                    </td>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.quality_gate ?? "—"}</td>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{partialStr}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: riskColor }}
-                        title={riskIsStale ? "Pre-Phase-1 engine — this engine has not been restarted post-2026-04-24 RISK_PCT=0.0080 deploy" : "Phase 1 (current production risk)"}>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#aaa" }}>{c.be_move ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#4ade80" }}
+                        title="Phase 1 fleet-wide RISK_PCT (engine constant)">
                       {riskStr}
                     </td>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#60a5fa" }}>{c.stop_mode ?? "—"}</td>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace", color: trailColor }}>{c.trail ?? "—"}</td>
                     <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11 }}>{c.universe_filter ?? "—"}</td>
-                    <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11, lineHeight: 1.4 }}>{c.notes ?? "—"}</td>
                   </tr>
                 );
               })}
@@ -521,8 +586,9 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
           </table>
         </div>
         <div style={{ padding: "8px 12px", borderTop: "1px solid #1f1f2f", fontSize: 11, color: "#555", textAlign: "center" }}>
-          Sourced from useSupabaseData.js · VARIANT_CONFIG ·
-          last refresh 2026-04-28 (post account-transition + telemetry fixes + Track 1 seed + Stocks LIMIT)
+          Structured fields only · full per-variant deploy state and rationale lives in
+          {" "}<code style={{ color: "#aaa" }}>docs/variant_state.md</code>{" "}
+          (refresh on every Rule-2 deploy)
         </div>
       </div>
 

@@ -20,29 +20,33 @@ const VARIANT_META = {
 // demo) follows as the V2/Plan-A/B/C reference; demos last.
 const ACCOUNT_KEYS = ["challenge", "production", "alpha", "bravo", "charlie", "delta"];
 
-// Per-variant live configuration. This is the AUTHORITATIVE per-variant
-// reference the dashboard renders in the "Variant Configuration" table.
-// Source of truth: config_*.yaml (in /Users/mmmacbook/Projects/FTMO_V4/)
-// + engine/run_live.py hardcoded constants (RISK_PCT, MAX_POSITIONS) +
-// CLAUDE.md "BASELINE REFERENCE / LIVE DEPLOYMENT STATE" section
-// (Rule-1 ground-truth as of running-engine startup banners).
+// Per-variant live configuration. STRUCTURED FIELDS ONLY — full prose
+// notes (TP method, BE decouple/coincident, code-path lineage, deploy
+// rationale, etc.) live in the offline doc:
+//   docs/variant_state.md   ← refresh on every Rule-2 deploy
+// Dashboard surfaces only the at-a-glance fields below. account_type +
+// target_pct identify whether a row is Challenge/Demo and what the
+// pass criteria are. be_move encodes the BE rule because that's a real
+// per-variant differentiator (V3 mgmt's D2 BE-decouple @1.0R only fires
+// on production/challenge today).
 //
-// IMPORTANT: when a Rule-2 deploy lands, edit THIS block to match
-// running-engine state. The previous behavior of identical hardcoded
-// values masked real per-variant differences (engine-version drift,
-// trail mode, partial overrides).
+// Source of truth (in priority order):
+//   1. Running engine startup banner (Rule-1 ground truth)
+//   2. config_*.yaml (in /Users/mmmacbook/Projects/FTMO_V4/)
+//   3. engine/run_live.py hardcoded constants (RISK_PCT, MAX_POSITIONS)
+//   4. tools/system_health_state.yaml (cross-tool canonical mirror)
 //
-// Last refreshed: 2026-04-30 (risk_pct corrected to 0.0080 fleet-wide
-// — Phase 1 deploy 2026-04-24 dropped RISK_PCT 1.65→0.80% as a single
-// hardcoded constant in engine/run_live.py:421; all 5 variants restarted
-// since then run on 0.80%, including the Spotware demos restarted
-// 2026-04-28 18:03 UTC).
+// Last refreshed: 2026-04-30 (notes field removed; structured fields
+// added; offline doc created at docs/variant_state.md).
 const VARIANT_CONFIG = {
   production: {
+    account_type:          "FTMO Free Demo",
+    target_pct:            null,           // demo — no profit target
     quality_gate:          58,
     entry_delay_bars:      0,
     partial_trigger_r:     0.6,
     partial_pct:           0.20,
+    be_move:               "+1.0R decoupled",   // D2 — BE moves only after MFE crosses 1.0R
     ranking_method:        "quality_score",
     risk_pct:              0.0080,
     stop_mode:             "half-fib of pullback",
@@ -50,72 +54,15 @@ const VARIANT_CONFIG = {
     slot_mode:             "risk_based",
     max_floating_risk_pct: 0.045,
     universe_filter:       "44 syms · no crypto",
-    notes:
-      "Initial TP: 1.272 Fib extension. " +
-      "Move stop to break-even ONLY after MFE crosses +1.0R (decoupled from partial — survives noise wicks). " +
-      "Stock entries use LIMIT @ entry-bar open with 600s expiry (caps slippage on RTH tape). " +
-      "Hard $90k static max-loss floor (FTMO 2-Step rule — was trailing, switched to static after death-spiral). " +
-      "On every engine restart, classifier _sequence is pre-seeded from 1+ year of cTrader bars (avoids cold-start IBO bias).",
-  },
-  alpha: {
-    quality_gate:      58,
-    entry_delay_bars:  0,
-    partial_trigger_r: 0.5,
-    partial_pct:       0.30,
-    ranking_method:    "quality_score",
-    risk_pct:          0.0080,
-    stop_mode:         "classifier-computed",
-    trail:             "off",
-    slot_mode:         "risk_based",
-    universe_filter:   "36 syms · incl. ETHUSD",
-    notes:
-      "Initial TP: 1.272 Fib extension. " +
-      "Move stop to break-even at +0.5R (coincident with partial). " +
-      "No trail — A/B control variant by design (any 'V2-style' behavior here would be coincidence). " +
-      "Spotware-demo: classifier-stop code path; Phase 1 risk dial (0.80%) NOT yet propagated here — V2 rollout is a separate Rule-2.",
-  },
-  bravo: {
-    quality_gate:      58,
-    entry_delay_bars:  0,
-    partial_trigger_r: 0.5,
-    partial_pct:       0.30,
-    ranking_method:    "quality_score",
-    risk_pct:          0.0080,
-    stop_mode:         "classifier-computed",
-    trail:             "C5: act 60% / 10% trail / 12R cap",
-    slot_mode:         "risk_based",
-    universe_filter:   "17 forex pairs",
-    notes:
-      "Initial TP: 1.272 Fib extension. " +
-      "Move stop to break-even at +0.5R (coincident with partial). " +
-      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
-      "Forex-only universe (no stocks/indices/metals/commodities). " +
-      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
-  },
-  charlie: {
-    quality_gate:      58,
-    entry_delay_bars:  0,
-    partial_trigger_r: 0.5,
-    partial_pct:       0.30,
-    ranking_method:    "quality_score",
-    risk_pct:          0.0080,
-    stop_mode:         "classifier-computed",
-    trail:             "C5: act 60% / 10% trail / 12R cap",
-    slot_mode:         "risk_based",
-    universe_filter:   "35 syms",
-    notes:
-      "Initial TP: 1.272 Fib extension. " +
-      "Move stop to break-even at +0.5R (coincident with partial). " +
-      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
-      "Full universe (forex + indices + metals + commodities + stocks). " +
-      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
   },
   challenge: {
+    account_type:           "FTMO 2-Step Challenge",
+    target_pct:             10,             // Step-1 profit target = 10%
     quality_gate:           58,
     entry_delay_bars:       0,
     partial_trigger_r:      0.6,
     partial_pct:            0.20,
-    be_decouple_r:          1.0,
+    be_move:                "+1.0R decoupled",
     ranking_method:         "quality_score",
     risk_pct:               0.0080,
     stop_mode:              "half-fib of pullback",
@@ -123,33 +70,69 @@ const VARIANT_CONFIG = {
     slot_mode:              "risk_based",
     max_floating_risk_pct:  0.045,
     max_positions_hard_cap: 15,
-    search_start_gate:      100,    // 2026-04-30 deploy: engine-validator gate (was 5)
-    h4_confirmation_bars:   1,      // Phase 5 ON
+    search_start_gate:      100,            // 2026-04-30: engine-validator gate (was 5)
+    h4_confirmation_bars:   1,              // Phase 5 ON
     universe_filter:        "34 syms · no crypto",
-    notes:
-      "Paid FTMO 2-Step Challenge ($900 fee, started 2026-04-30). Same OAuth + bridge as Production; cTrader demo env (vs Production's live env). " +
-      "Same code path as Production: V2 half-fib stop + Phase 5 ON + V3 mgmt (D2 BE-decouple @1.0R + D3 partial 20%@0.6R) + no trail + EMA-as-soft-factor only. " +
-      "Engine-wide gate=100 (deployed 2026-04-30): _find_m10_entry waits until 100+ M10 forward bars accumulated past scan_ts (~16.7h) before attempting entry detection. Live-replay 4y backtest: 74.4% WR / +1188R / 0.33% Prague-daily DD / FTMO PASS by huge margin. " +
-      "Universe revised 2026-04-30: 17 → 10 exclusions (un-excluded AMZN/GOOG/META/MSTR/XOM/JP225/GER40 — all 73-87% WR / net +R in gate=100 backtest). Still excluded: CAT/DIS/FDX/GS/HD/MA/V/UK100/AUDNZD/GBPCAD (no backtest data, except UK100 = confirmed bad). " +
-      "On every restart, classifier _sequence is pre-seeded from 1+ year of cTrader bars (avoids cold-start IBO bias). Watchlist preserved across restarts via load_watchlist_state.",
   },
-  delta: {
+  alpha: {
+    account_type:      "Spotware Demo",
+    target_pct:        null,
     quality_gate:      58,
     entry_delay_bars:  0,
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
+    be_move:           "+0.5R coincident",   // BE moves with partial fire
+    ranking_method:    "quality_score",
+    risk_pct:          0.0080,
+    stop_mode:         "classifier-computed",
+    trail:             "off",                // CONTROL — no trail
+    slot_mode:         "risk_based",
+    universe_filter:   "36 syms · incl. ETHUSD",
+  },
+  bravo: {
+    account_type:      "Spotware Demo",
+    target_pct:        null,
+    quality_gate:      58,
+    entry_delay_bars:  0,
+    partial_trigger_r: 0.5,
+    partial_pct:       0.30,
+    be_move:           "+0.5R coincident",
+    ranking_method:    "quality_score",
+    risk_pct:          0.0080,
+    stop_mode:         "classifier-computed",
+    trail:             "C5: act 60% / 10% trail / 12R cap",
+    slot_mode:         "risk_based",
+    universe_filter:   "17 forex pairs",
+  },
+  charlie: {
+    account_type:      "Spotware Demo",
+    target_pct:        null,
+    quality_gate:      58,
+    entry_delay_bars:  0,
+    partial_trigger_r: 0.5,
+    partial_pct:       0.30,
+    be_move:           "+0.5R coincident",
+    ranking_method:    "quality_score",
+    risk_pct:          0.0080,
+    stop_mode:         "classifier-computed",
+    trail:             "C5: act 60% / 10% trail / 12R cap",
+    slot_mode:         "risk_based",
+    universe_filter:   "35 syms",
+  },
+  delta: {
+    account_type:      "Spotware Demo",
+    target_pct:        null,
+    quality_gate:      58,
+    entry_delay_bars:  0,
+    partial_trigger_r: 0.5,
+    partial_pct:       0.30,
+    be_move:           "+0.5R coincident",
     ranking_method:    "quality_score",
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
     universe_filter:   "36 syms · incl. ETHUSD",
-    notes:
-      "Initial TP: 1.272 Fib extension. " +
-      "Move stop to break-even at +0.5R (coincident with partial). " +
-      "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
-      "Full universe + ETHUSD (only variant currently allowed crypto). " +
-      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
   },
 };
 
