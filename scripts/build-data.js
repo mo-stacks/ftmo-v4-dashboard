@@ -280,6 +280,33 @@ const ACCOUNTS = [
       max_floating_risk_pct: 6.5,
     },
   },
+  {
+    key: "challenge",
+    label: "Challenge",
+    fullLabel: "FTMO 2-Step Challenge (V2 + gate=100)",
+    suffix: "_ftmo_challenge",
+    accountId: "47142181",
+    displayId: "7545753",  // FTMO trading login
+    bridgePort: 3100,         // shared bridge with production (multi-account; demo.ctraderapi.com host)
+    color: "#fb923c",         // orange — distinct from production green
+    config: {
+      name: "FTMO_CHALLENGE",
+      quality_gate: 58,
+      entry_delay_bars: 0,
+      partial_trigger_r: 0.6,        // D3 (Plan A 2026-04-27)
+      partial_pct: 0.20,             // D3
+      be_decouple_r: 1.0,            // D2 (Plan C 2026-04-27)
+      ranking_method: "quality_score",
+      slot_mode: "risk_based",
+      max_floating_risk_pct: 4.5,
+      max_positions_hard_cap: 15,
+      entry_search_h4_confirmation_bars: 1,  // Phase 5 ON
+      stop_mode: "pivot_half_fib",
+      trailing_enabled: false,
+      // 2026-04-30 deploy-wide engine const (applies to all variants):
+      // search_start_gate=100 (was -5) — engine-validator gate for entry detection
+    },
+  },
 ];
 
 /* ── Trade data (per account) ───────────────────────────────── */
