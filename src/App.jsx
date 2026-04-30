@@ -1,10 +1,56 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Component } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
 import { useSupabaseData } from "./useSupabaseData.js";
 import { VARIANT_CHANGE_EVENTS, attachChangeEvents } from "./changeEvents.js";
+
+/* ── error boundary ──────────────────────────────────────────────
+   Wraps a major section so a render error in one panel doesn't
+   unmount the whole tree (which previously dropped the user back
+   to the loading screen). Each boundary shows a contained error
+   panel; the rest of the dashboard keeps working. Logs to console
+   for debugging. */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    // eslint-disable-next-line no-console
+    console.error(`[ErrorBoundary:${this.props.label || "section"}]`, error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          background: "#2a1a1a",
+          border: "1px solid #f87171",
+          borderRadius: 10,
+          padding: 16,
+          margin: "12px 0",
+          color: "#fca5a5",
+          fontSize: 13,
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 6, color: "#f87171" }}>
+            ⚠ {this.props.label || "Section"} failed to render
+          </div>
+          <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+            Other panels are unaffected. Reload to retry, or check the browser console for details.
+          </div>
+          <pre style={{ fontSize: 11, color: "#ef4444", margin: 0, overflow: "auto", maxHeight: 120 }}>
+            {String(this.state.error?.message || this.state.error)}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -341,8 +387,13 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                 const s = a.engineState;
                 const balance = a.meta.currentBalance ?? 100000;
                 const equity = a.meta.currentEquity ?? balance;
-                const dayStart = s?.dayStartBalance ?? balance;
-                const dayPnl = equity - dayStart;
+                // Day P&L is only meaningful when engine state has reported a
+                // dayStartBalance. Falling back to current balance silently
+                // produces $0 on variants whose state is loading or missing,
+                // which masks "no state" as "no movement". Show — instead.
+                const hasDayStart = s?.dayStartBalance != null;
+                const dayStart = hasDayStart ? s.dayStartBalance : null;
+                const dayPnl = hasDayStart ? equity - dayStart : null;
                 const realized = a.meta.realizedPnl || 0;
                 const openPnl = a.meta.openPnl || 0;
                 return (
@@ -381,8 +432,8 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     <td style={{ padding: "10px 12px", color: realized >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace", fontWeight: 600 }}>
                       {realized >= 0 ? "+" : ""}${realized.toFixed(2)}
                     </td>
-                    <td style={{ padding: "10px 12px", color: dayPnl >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace" }}>
-                      {dayPnl >= 0 ? "+" : ""}${dayPnl.toFixed(2)}
+                    <td style={{ padding: "10px 12px", color: dayPnl == null ? "#555" : dayPnl >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace" }}>
+                      {dayPnl == null ? "—" : `${dayPnl >= 0 ? "+" : ""}$${dayPnl.toFixed(2)}`}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {a.meta.totalTrades}
@@ -543,14 +594,16 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     // points that carry a `${variantKey}_changes` array
                     // (populated by attachChangeEvents). Hover the marker
                     // for a native browser tooltip describing the change.
+                    //
+                    // 2026-04-30 perf fix: previously returned an empty <g/>
+                    // for non-event points (~500 × 6 = 3000 empty SVG groups
+                    // per render). Recharts 3.x handles null/undefined from
+                    // the dot callback cleanly (no React key warning), so
+                    // we return null for non-event points. Drops 3000 dead
+                    // DOM nodes; only event-point markers render.
                     dot={(props) => {
                       const events = props?.payload?.[`${a.key}_changes`];
-                      if (!events?.length) {
-                        // Recharts requires a valid SVG element from this
-                        // function — return an empty <g> for non-event points
-                        // so React doesn't warn about returning null.
-                        return <g key={`empty-${props?.index ?? 0}`} />;
-                      }
+                      if (!events?.length) return null;
                       // Concatenate all events at this point for the tooltip
                       const tipText = events
                         .map(e => `[${e.label}] ${e.title}\n${e.details}`)
@@ -1417,11 +1470,11 @@ function AccountView({ account, mob }) {
         <StatusPill status={account.status} />
       </div>
 
-      <EngineStatus account={account} mob={mob} />
-      <OpenPositions account={account} mob={mob} />
-      <Watchlist account={account} mob={mob} />
-      <ScanActivity account={account} mob={mob} />
-      <TradePerformance account={account} mob={mob} />
+      <ErrorBoundary label="Engine Status"><EngineStatus account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Open Positions"><OpenPositions account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Watchlist"><Watchlist account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Scan Activity"><ScanActivity account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Trade Performance"><TradePerformance account={account} mob={mob} /></ErrorBoundary>
     </>
   );
 }
@@ -1458,24 +1511,27 @@ export default function App() {
 
         {/* Header */}
         <h1 style={{ fontSize: mob ? 20 : 26, fontWeight: 700, margin: 0, color: "#fff" }}>
-          ICS V1 — Multi-Variant Dashboard
+          FTMO V4 — Multi-Variant Dashboard
         </h1>
         <p style={{ color: "#888", margin: "4px 0 14px", fontSize: 13 }}>
-          Production + 4 strategy variants · Live Demo Accounts · 31 instruments · 1% risk per trade
+          Production + Challenge + 4 strategy variants · Live cTrader demo accounts
         </p>
 
         {/* Tab navigation */}
         <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
 
-        {/* Content */}
-        {isMain
-          ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
-          : <AccountView account={currentAccount} mob={mob} />
-        }
+        {/* Content — wrapped so a render error in one section doesn't
+            blow away the whole app (previously dropped to loading screen) */}
+        <ErrorBoundary label={isMain ? "Main Dashboard" : `Account: ${currentAccount?.label || "?"}`}>
+          {isMain
+            ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
+            : <AccountView account={currentAccount} mob={mob} />
+          }
+        </ErrorBoundary>
 
         {/* Footer */}
         <div style={{ textAlign: "center", marginTop: 24, padding: "12px 0", fontSize: 11, color: "#555", borderTop: "1px solid #1a1a2e" }}>
-          ICS V1 Engine · Data snapshot: {LAST_UPDATED ? new Date(LAST_UPDATED).toLocaleString() : "—"}
+          FTMO V4 Engine · Data snapshot: {LAST_UPDATED ? new Date(LAST_UPDATED).toLocaleString() : "—"}
         </div>
       </div>
     </div>

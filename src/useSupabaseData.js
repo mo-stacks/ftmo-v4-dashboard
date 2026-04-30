@@ -67,7 +67,7 @@ const VARIANT_CONFIG = {
       "Initial TP: 1.272 Fib extension. " +
       "Move stop to break-even at +0.5R (coincident with partial). " +
       "No trail — A/B control variant by design (any 'V2-style' behavior here would be coincidence). " +
-      "Engine has NOT been restarted since 2026-04-18, so it is running the older classifier-stop code (pre-half-fib-port) and the older 1.65% risk dial — not the 0.80% Phase 1 deploy that landed Apr 24 on Production.",
+      "Spotware-demo: classifier-stop code path; Phase 1 risk dial (0.80%) NOT yet propagated here — V2 rollout is a separate Rule-2.",
   },
   bravo: {
     quality_gate:      58,
@@ -85,7 +85,7 @@ const VARIANT_CONFIG = {
       "Move stop to break-even at +0.5R (coincident with partial). " +
       "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
       "Forex-only universe (no stocks/indices/metals/commodities). " +
-      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
+      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
   },
   charlie: {
     quality_gate:      58,
@@ -103,7 +103,7 @@ const VARIANT_CONFIG = {
       "Move stop to break-even at +0.5R (coincident with partial). " +
       "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
       "Full universe (forex + indices + metals + commodities + stocks). " +
-      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
+      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
   },
   challenge: {
     quality_gate:           58,
@@ -144,7 +144,7 @@ const VARIANT_CONFIG = {
       "Move stop to break-even at +0.5R (coincident with partial). " +
       "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
       "Full universe + ETHUSD (only variant currently allowed crypto). " +
-      "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
+      "Spotware-demo: classifier-stop code path; Phase 1 risk dial NOT yet propagated.",
   },
 };
 
@@ -229,7 +229,13 @@ export function useSupabaseData() {
       // reverse so downstream (App.jsx balanceCurve builder at lines 74-87)
       // continues to receive chronologically-ascending rows.
       const PAGE_SIZE = 1000;
-      const MAX_ROWS = 50000;
+      // 2026-04-30: raised 50k → 100k to cover 6 variants × 90d × ~2min cadence
+      // (theoretical 388k cap; observed ~57-66k after dropped-row filtering).
+      // Truncation hit "OLDEST 16k get dropped" in the 50k regime because the
+      // pagination is ORDER BY timestamp DESC (newest-first), so reaching the
+      // cap drops the oldest pages. After A (server-side hourly aggregation)
+      // lands, this cap drops back to ~12k and the safety margin is huge.
+      const MAX_ROWS = 100000;
       const cutoffIso = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
       const snapsAccum = [];
       for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
