@@ -10,9 +10,13 @@ const VARIANT_META = {
   bravo:      { label: "Bravo",      fullLabel: "Bravo — classifier stop + trail-C5 (forex)", color: "#c084fc", displayId: "5797576",  accountId: "46915271" },
   charlie:    { label: "Charlie",    fullLabel: "Charlie — classifier stop + trail-C5",       color: "#facc15", displayId: "5797577",  accountId: "46915274" },
   delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + trail-C5 (+crypto)", color: "#f87171", displayId: "5797579",  accountId: "46915276" },
+  // 2026-04-30: FTMO 2-Step Challenge added. Same OAuth as Production;
+  // bridge auto-routes by accountId (live host for PROD, demo host for Challenge).
+  // Same code path: gate=100 (engine-validator), Phase 5 ON, V3 mgmt, V2 half-fib stop.
+  challenge:  { label: "Challenge",  fullLabel: "Challenge — half-fib stop, gate=100 (V2 + Plan A/B/C)", color: "#fb923c", displayId: "7545753",  accountId: "47142181" },
 };
 
-const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta"];
+const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta", "challenge"];
 
 // Per-variant live configuration. This is the AUTHORITATIVE per-variant
 // reference the dashboard renders in the "Variant Configuration" table.
@@ -100,6 +104,29 @@ const VARIANT_CONFIG = {
       "Trail-C5: after partial fires, trail activates at 60% of distance to TP, follows price by 10%, capped at 12R. On activation, broker TP is amended FROM 1.272 Fib TO the 12R safety ceiling. " +
       "Full universe (forex + indices + metals + commodities + stocks). " +
       "Engine has NOT been restarted since 2026-04-18 — running classifier-stop code, not the 0.80% Phase 1 risk dial.",
+  },
+  challenge: {
+    quality_gate:           58,
+    entry_delay_bars:       0,
+    partial_trigger_r:      0.6,
+    partial_pct:            0.20,
+    be_decouple_r:          1.0,
+    ranking_method:         "quality_score",
+    risk_pct:               0.0080,
+    stop_mode:              "half-fib of pullback",
+    trail:                  "off",
+    slot_mode:              "risk_based",
+    max_floating_risk_pct:  0.045,
+    max_positions_hard_cap: 15,
+    search_start_gate:      100,    // 2026-04-30 deploy: engine-validator gate (was 5)
+    h4_confirmation_bars:   1,      // Phase 5 ON
+    universe_filter:        "34 syms · no crypto",
+    notes:
+      "Paid FTMO 2-Step Challenge ($900 fee, started 2026-04-30). Same OAuth + bridge as Production; cTrader demo env (vs Production's live env). " +
+      "Same code path as Production: V2 half-fib stop + Phase 5 ON + V3 mgmt (D2 BE-decouple @1.0R + D3 partial 20%@0.6R) + no trail + EMA-as-soft-factor only. " +
+      "Engine-wide gate=100 (deployed 2026-04-30): _find_m10_entry waits until 100+ M10 forward bars accumulated past scan_ts (~16.7h) before attempting entry detection. Live-replay 4y backtest: 74.4% WR / +1188R / 0.33% Prague-daily DD / FTMO PASS by huge margin. " +
+      "Universe revised 2026-04-30: 17 → 10 exclusions (un-excluded AMZN/GOOG/META/MSTR/XOM/JP225/GER40 — all 73-87% WR / net +R in gate=100 backtest). Still excluded: CAT/DIS/FDX/GS/HD/MA/V/UK100/AUDNZD/GBPCAD (no backtest data, except UK100 = confirmed bad). " +
+      "On every restart, classifier _sequence is pre-seeded from 1+ year of cTrader bars (avoids cold-start IBO bias). Watchlist preserved across restarts via load_watchlist_state.",
   },
   delta: {
     quality_gate:      58,
