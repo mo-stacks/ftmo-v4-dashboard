@@ -592,22 +592,18 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     strokeWidth={2}
                     // Per-point dot renderer: returns a marker SVG only for
                     // points that carry a `${variantKey}_changes` array
-                    // (populated by attachChangeEvents). Hover the marker
-                    // for a native browser tooltip describing the change.
+                    // (populated by attachChangeEvents). Non-event points
+                    // return null (Recharts 3.x handles cleanly).
                     //
-                    // 2026-04-30 perf fix: previously returned an empty <g/>
-                    // for non-event points (~500 × 6 = 3000 empty SVG groups
-                    // per render). Recharts 3.x handles null/undefined from
-                    // the dot callback cleanly (no React key warning), so
-                    // we return null for non-event points. Drops 3000 dead
-                    // DOM nodes; only event-point markers render.
+                    // 2026-04-30: removed the per-marker SVG <title> tooltip
+                    // — it was triggering occasional DOM crashes on points
+                    // with multiple stacked events (long concatenated tip
+                    // strings). Markers are now visual-only; users can
+                    // cross-reference change details in changeEvents.js
+                    // until a proper Tooltip overlay is wired (deferred).
                     dot={(props) => {
                       const events = props?.payload?.[`${a.key}_changes`];
                       if (!events?.length) return null;
-                      // Concatenate all events at this point for the tooltip
-                      const tipText = events
-                        .map(e => `[${e.label}] ${e.title}\n${e.details}`)
-                        .join("\n\n— — —\n\n");
                       const cx = props.cx;
                       const cy = props.cy;
                       return (
@@ -616,8 +612,6 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                           <circle cx={cx} cy={cy} r={7} fill="#0a0a14" stroke={a.color} strokeWidth={2} />
                           {/* inner solid disc — variant color */}
                           <circle cx={cx} cy={cy} r={3.5} fill={a.color} stroke="#fff" strokeWidth={0.5} />
-                          {/* SVG-native tooltip — multiline text supported */}
-                          <title>{tipText}</title>
                         </g>
                       );
                     }}
@@ -628,7 +622,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
               </LineChart>
             </ResponsiveContainer>
             <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginTop: 6 }}>
-              Markers (◉) on each curve = config changes that took effect at that timestamp · hover to see details ·
+              Markers (◉) on each curve indicate config changes that took effect at that timestamp ·
               Sourced from live cTrader balance snapshots
             </div>
           </div>
@@ -960,7 +954,33 @@ function ScanActivity({ account, mob }) {
             )}
           </div>
           {h4Scans.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#555", textAlign: "center", padding: 12 }}>No H4 scans logged yet</div>
+            // Engine state file (watchlist_state_*.json) tracks h4_scans
+            // (counter) and next_h4_scan (timestamp) but does NOT yet keep
+            // a recent_h4_scans list — the publisher cannot push what the
+            // engine doesn't expose. Surface what we DO have honestly
+            // instead of pretending the list is empty awaiting data.
+            // Adding recent_h4_scans to the engine state is the upstream
+            // fix; see dashboard handoff doc for the cross-cut work.
+            <div style={{ fontSize: 12, color: "#888", padding: "8px 4px", lineHeight: 1.5 }}>
+              <div style={{ marginBottom: 6 }}>
+                Total H4 scans completed:{" "}
+                <span style={{ color: "#60a5fa", fontWeight: 600 }}>
+                  {account.engineState?.h4Scans ?? "—"}
+                </span>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                Next H4 scan:{" "}
+                <span style={{ color: "#60a5fa", fontWeight: 600 }}>
+                  {account.engineState?.nextH4Scan
+                    ? fmtScanTime(getNextH4Scan(account.engineState.nextH4Scan))
+                    : "—"}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "#555", marginTop: 8 }}>
+                Per-scan history not yet exposed by engine state file
+                (only counter + next-scan timestamp are published).
+              </div>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {displayH4.slice().reverse().map((scan, i) => (

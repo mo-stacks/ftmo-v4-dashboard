@@ -16,7 +16,9 @@ const VARIANT_META = {
   challenge:  { label: "Challenge",  fullLabel: "Challenge — half-fib stop, gate=100 (V2 + Plan A/B/C)", color: "#fb923c", displayId: "7545753",  accountId: "47142181" },
 };
 
-const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta", "challenge"];
+// Challenge first — primary funded-pathway account; Production (FTMO Free
+// demo) follows as the V2/Plan-A/B/C reference; demos last.
+const ACCOUNT_KEYS = ["challenge", "production", "alpha", "bravo", "charlie", "delta"];
 
 // Per-variant live configuration. This is the AUTHORITATIVE per-variant
 // reference the dashboard renders in the "Variant Configuration" table.
@@ -30,8 +32,11 @@ const ACCOUNT_KEYS = ["production", "alpha", "bravo", "charlie", "delta", "chall
 // values masked real per-variant differences (engine-version drift,
 // trail mode, partial overrides).
 //
-// Last refreshed: 2026-04-28 (post-account-transition + telemetry fixes
-// + Track 1 seed + Stocks LIMIT + EMERGENCY $90k static floor).
+// Last refreshed: 2026-04-30 (risk_pct corrected to 0.0080 fleet-wide
+// — Phase 1 deploy 2026-04-24 dropped RISK_PCT 1.65→0.80% as a single
+// hardcoded constant in engine/run_live.py:421; all 5 variants restarted
+// since then run on 0.80%, including the Spotware demos restarted
+// 2026-04-28 18:03 UTC).
 const VARIANT_CONFIG = {
   production: {
     quality_gate:          58,
@@ -58,7 +63,7 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,
+    risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "off",
     slot_mode:         "risk_based",
@@ -75,7 +80,7 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,
+    risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
@@ -93,7 +98,7 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,
+    risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
@@ -134,7 +139,7 @@ const VARIANT_CONFIG = {
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
     ranking_method:    "quality_score",
-    risk_pct:          0.0165,
+    risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
     slot_mode:         "risk_based",
