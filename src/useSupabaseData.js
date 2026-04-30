@@ -457,15 +457,35 @@ export function useSupabaseData() {
             nextH4Scan: state.next_h4_scan,
             watchlist,
             recentRemovals: [],
-            recentM10Scans: (state.scan_activity || []).map(s => ({
-              time: s.time,
-              symbolsChecked: s.symbols_checked,
-              entriesTriggered: s.entries_triggered,
-              entrySymbols: s.entry_symbols,
-              watchlistStatus: s.watchlist_status,
-            })),
+            recentM10Scans: (() => {
+              // scan_activity shape evolved 2026-04-30:
+              //   - Old: [m10_scan, ...]                 (bare array)
+              //   - New: {"m10": [...], "h4": [...]}     (dict)
+              // Pick the M10 list from whichever shape is present.
+              const sa = state.scan_activity;
+              const m10 = Array.isArray(sa)
+                ? sa
+                : (sa && Array.isArray(sa.m10) ? sa.m10 : []);
+              return m10.map(s => ({
+                time: s.time,
+                symbolsChecked: s.symbols_checked,
+                entriesTriggered: s.entries_triggered,
+                entrySymbols: s.entry_symbols,
+                watchlistStatus: s.watchlist_status,
+              }));
+            })(),
           },
-          h4Scans: [],
+          h4Scans: (() => {
+            // 2026-04-30: publisher now embeds H4 scan history in
+            // state.scan_activity using dict shape `{m10: [...], h4: [...]}`.
+            // Old shape is a bare array (M10 only). Read defensively so
+            // a publisher rollback or stale row still renders cleanly.
+            const sa = state.scan_activity;
+            if (sa && !Array.isArray(sa) && Array.isArray(sa.h4)) {
+              return sa.h4;
+            }
+            return [];
+          })(),
           openPositions,
         };
       }

@@ -954,13 +954,12 @@ function ScanActivity({ account, mob }) {
             )}
           </div>
           {h4Scans.length === 0 ? (
-            // Engine state file (watchlist_state_*.json) tracks h4_scans
-            // (counter) and next_h4_scan (timestamp) but does NOT yet keep
-            // a recent_h4_scans list — the publisher cannot push what the
-            // engine doesn't expose. Surface what we DO have honestly
-            // instead of pretending the list is empty awaiting data.
-            // Adding recent_h4_scans to the engine state is the upstream
-            // fix; see dashboard handoff doc for the cross-cut work.
+            // 2026-04-30: publisher now aggregates recent H4 scans from
+            // logs/events/*.jsonl and pushes them via scan_activity.h4
+            // (dict shape). An empty list here means the variant simply
+            // hasn't completed an H4 scan in the last ~36h covered by the
+            // log window — which is normal for a freshly-started variant
+            // (e.g. Challenge waiting on its first scan post-launch).
             <div style={{ fontSize: 12, color: "#888", padding: "8px 4px", lineHeight: 1.5 }}>
               <div style={{ marginBottom: 6 }}>
                 Total H4 scans completed:{" "}
@@ -977,8 +976,8 @@ function ScanActivity({ account, mob }) {
                 </span>
               </div>
               <div style={{ fontSize: 11, color: "#555", marginTop: 8 }}>
-                Per-scan history not yet exposed by engine state file
-                (only counter + next-scan timestamp are published).
+                Recent-scans list will populate after the next H4 scan
+                completes (cTrader grid: 01 / 05 / 09 / 13 / 17 / 21 UTC).
               </div>
             </div>
           ) : (
