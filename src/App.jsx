@@ -1004,16 +1004,33 @@ function WatchlistDetailPanel({ entry, account, mob }) {
   const balance = account?.meta?.currentBalance ?? account?.engineState?.balance ?? 100000;
   const riskUsd = balance * riskPct;
 
+  // Resolve the break level — the price the M10 close must cross to
+  // trigger entry. Three sources, in priority order:
+  //   1. engine-computed candidate_break_level (precise, not yet wired)
+  //   2. impulse_end_price (Impulse Continuation reference: the impulse
+  //      extreme is the level the engine watches for re-break confirmation)
+  //   3. null → render "calculating…"
+  // Source 2 is a faithful approximation for IBO setups (the impulse high
+  // for bullish, the impulse low for bearish). For CBO setups it's an
+  // upper-bound estimate — the actual M10 pivot the engine fires on tends
+  // to be at-or-inside this level, so RR computed here is a conservative
+  // floor (real RR may be slightly higher).
+  let brk = e.candidateBreakLevel;
+  let brkSource = brk != null ? "engine" : null;
+  if (brk == null && e.impulseEndPrice != null) {
+    brk = e.impulseEndPrice;
+    brkSource = "impulse_extreme";
+  }
+
   // Compute RR ratio if we have break level + stop + target
   let rrRatio = null;
-  const brk = e.candidateBreakLevel;
   if (brk != null && e.stopPrice != null && e.targetPrice != null) {
     const stopDist = Math.abs(brk - e.stopPrice);
     const targDist = Math.abs(e.targetPrice - brk);
     if (stopDist > 0) rrRatio = targDist / stopDist;
   }
 
-  // Risk distance in $ from break to stop (only valid when break_level lands)
+  // Risk distance in $ from break to stop
   let breakToStop = null, breakToTarget = null;
   if (brk != null) {
     if (e.stopPrice != null) breakToStop = Math.abs(brk - e.stopPrice);
@@ -1062,13 +1079,24 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           <div style={fieldRow}>
             <span style={fieldLabel}>{e.direction === "bullish" ? "Break above" : "Break below"}</span>
             <span style={fieldVal}>
-              {brk != null ? fmtPrice(brk) : <span style={{ color: "#555", fontStyle: "italic" }}>calculating…</span>}
+              {brk != null ? (
+                <>
+                  {fmtPrice(brk)}
+                  {brkSource === "impulse_extreme" && (
+                    <span style={{ color: "#666", marginLeft: 6, fontSize: 10, fontStyle: "italic" }}>
+                      (≈ impulse extreme; precise pivot pending engine instrumentation)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span style={{ color: "#555", fontStyle: "italic" }}>calculating…</span>
+              )}
             </span>
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Pivot price</span>
             <span style={fieldVal}>
-              {e.candidatePivotPrice != null ? fmtPrice(e.candidatePivotPrice) : <span style={{ color: "#555", fontStyle: "italic" }}>calculating…</span>}
+              {e.candidatePivotPrice != null ? fmtPrice(e.candidatePivotPrice) : <span style={{ color: "#555", fontStyle: "italic" }}>—</span>}
             </span>
           </div>
           <div style={fieldRow}>
@@ -1099,7 +1127,16 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           <div style={fieldRow}>
             <span style={fieldLabel}>RR at entry</span>
             <span style={fieldVal}>
-              {rrRatio != null ? `${rrRatio.toFixed(2)} : 1` : <span style={{ color: "#555", fontStyle: "italic" }}>needs break level</span>}
+              {rrRatio != null ? (
+                <>
+                  {`${rrRatio.toFixed(2)} : 1`}
+                  {brkSource === "impulse_extreme" && (
+                    <span style={{ color: "#666", marginLeft: 6, fontSize: 10, fontStyle: "italic" }}>(estimated)</span>
+                  )}
+                </>
+              ) : (
+                <span style={{ color: "#555", fontStyle: "italic" }}>needs break level</span>
+              )}
             </span>
           </div>
           <div style={fieldRow}>
