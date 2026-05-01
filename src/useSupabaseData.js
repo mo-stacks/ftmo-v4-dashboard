@@ -451,7 +451,13 @@ export function useSupabaseData() {
             dayStartBalance: state.day_start_balance || currentBalance,
             highestEodBalance: peak,
             trailingDdFloor: state.trailing_dd || (STARTING_BALANCE * 0.9),
-            dailyLoss: state.daily_pnl || 0,
+            // daily_pnl from supabase is signed (positive = profit, negative = loss).
+            // The dashboard's "Daily Loss" indicator only counts losses against
+            // the FTMO daily DD limit — profits don't consume the limit. So:
+            //   dailyPnl: raw signed P&L (for informational display)
+            //   dailyLoss: only the loss component (0 when profitable)
+            dailyPnl: state.daily_pnl || 0,
+            dailyLoss: Math.max(0, -(state.daily_pnl || 0)),
             dailyDdLimit: 5000,
             tradingPaused: false,
             h4Scans: 0,

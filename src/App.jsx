@@ -792,7 +792,14 @@ function EngineStatus({ account, mob }) {
                 height: "100%", width: `${Math.min(100, parseFloat(dailyDdPct))}%`, borderRadius: 4, transition: "width 0.3s",
               }} />
             </div>
-            <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{dailyDdPct}% of daily limit used</div>
+            <div style={{ fontSize: 10, color: "#555", marginTop: 2, display: "flex", justifyContent: "space-between" }}>
+              <span>{dailyDdPct}% of daily limit used</span>
+              {s.dailyPnl != null && (
+                <span style={{ color: s.dailyPnl >= 0 ? "#4ade80" : "#f87171" }}>
+                  Daily P&L: {s.dailyPnl >= 0 ? "+" : ""}${s.dailyPnl.toFixed(2)}
+                </span>
+              )}
+            </div>
           </div>
           {/* Trailing DD */}
           <div>
