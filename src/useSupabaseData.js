@@ -394,6 +394,13 @@ export function useSupabaseData() {
           candidateBreakLevel: e.candidateBreakLevel ?? e.candidate_break_level ?? null,
           candidatePivotPrice: e.candidatePivotPrice ?? e.candidate_pivot_price ?? null,
           candidateStopPrice: e.candidateStopPriceFib ?? e.candidate_stop_price_pivot_half_fib ?? null,
+          // Candlestick data for the SetupChart in the detail panel.
+          // Engine pushes this via publish_to_supabase.py — shape:
+          //   { h4: [{t, o, h, l, c}, ...], m10: [{t, o, h, l, c}, ...] }
+          // `t` is unix-seconds (UTC). Empty/missing → chart shows
+          // "no candle data yet" empty state.
+          // See SESSION_HANDOFF Watchlist Setup-Chart for engine work.
+          candles: e.candles ?? null,
         }));
 
         // Open positions

@@ -1,4 +1,9 @@
-import { useState, useMemo, useEffect, Fragment, Component } from "react";
+import { useState, useMemo, useEffect, Fragment, Component, Suspense, lazy } from "react";
+
+// Lazy-load the candlestick chart (~150KB lightweight-charts) so the
+// initial dashboard bundle stays small. The chart only mounts when a
+// user expands a watchlist row.
+const SetupChart = lazy(() => import("./SetupChart.jsx"));
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
@@ -1052,33 +1057,59 @@ function WatchlistDetailPanel({ entry, account, mob }) {
   }
 
   // Section style helpers
+  // Mobile uses smaller fonts that match the parent watchlist table
+  // (the row text is 11–13px). Previously the detail panel was bigger
+  // than its own row which felt jarring.
   const sectionTitle = {
-    fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
-    textTransform: "uppercase", color: "#888",
-    margin: "0 0 8px",
+    fontSize: mob ? 9 : 10,
+    fontWeight: 700,
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+    color: "#888",
+    margin: mob ? "0 0 6px" : "0 0 8px",
   };
   const fieldRow = {
     display: "grid",
-    gridTemplateColumns: mob ? "minmax(110px,auto) 1fr" : "minmax(140px,auto) 1fr",
-    gap: 8, padding: "3px 0", fontSize: 12,
+    gridTemplateColumns: mob ? "minmax(90px,auto) 1fr" : "minmax(140px,auto) 1fr",
+    gap: mob ? 6 : 8,
+    padding: mob ? "2px 0" : "3px 0",
+    fontSize: mob ? 10 : 12,
+    lineHeight: mob ? 1.35 : 1.45,
   };
   const fieldLabel = { color: "#888" };
   const fieldVal = { color: "#e0e0e0", fontFamily: "monospace", wordBreak: "break-word" };
   const sectionBox = {
-    background: "#13131f", borderRadius: 8, padding: "12px 14px",
-    border: "1px solid #1f1f2f", minWidth: 0,
+    background: "#13131f",
+    borderRadius: mob ? 6 : 8,
+    padding: mob ? "9px 10px" : "12px 14px",
+    border: "1px solid #1f1f2f",
+    minWidth: 0,
   };
   const grid = {
     display: "grid",
     gridTemplateColumns: mob ? "1fr" : "1fr 1fr",
-    gap: 10,
+    gap: mob ? 8 : 10,
   };
 
   return (
     <div style={{
-      background: "#0d0d18", padding: mob ? "12px 10px" : "14px 16px",
-      borderTop: "1px solid #1f1f2f", borderBottom: "1px solid #1f1f2f",
+      background: "#0d0d18",
+      padding: mob ? "10px 8px" : "14px 16px",
+      borderTop: "1px solid #1f1f2f",
+      borderBottom: "1px solid #1f1f2f",
     }}>
+      {/* Chart (lazy-loaded) */}
+      <div style={{ marginBottom: mob ? 10 : 12 }}>
+        <Suspense fallback={
+          <div style={{
+            background: "#13131f", borderRadius: mob ? 6 : 8, border: "1px solid #1f1f2f",
+            padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
+          }}>Loading chart…</div>
+        }>
+          <SetupChart entry={entry} height={mob ? 220 : 280} />
+        </Suspense>
+      </div>
+
       <div style={grid}>
         {/* TRIGGER */}
         <div style={sectionBox}>
