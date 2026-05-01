@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Component } from "react";
+import { useState, useMemo, useEffect, Fragment, Component } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
@@ -177,10 +177,10 @@ const Tip = ({ active, payload }) => {
 /* ── stat card ───────────────────────────────────────────────── */
 
 const Card = ({ label, value, sub, color = "#4ade80" }) => (
-  <div style={{ background: "#1a1a2e", borderRadius: 10, padding: "14px 16px", border: "1px solid #2a2a3e" }}>
-    <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-    <div style={{ fontSize: 22, fontWeight: 700, color, marginTop: 3 }}>{value}</div>
-    {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{sub}</div>}
+  <div style={{ background: "#1a1a2e", borderRadius: 10, padding: "14px 16px", border: "1px solid #2a2a3e", minWidth: 0, overflow: "hidden" }}>
+    <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+    <div style={{ fontSize: 22, fontWeight: 700, color, marginTop: 3, wordBreak: "break-word", lineHeight: 1.15 }}>{value}</div>
+    {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 2, wordBreak: "break-word" }}>{sub}</div>}
   </div>
 );
 
@@ -387,7 +387,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
       <SectionHeader>Multi-Account Overview</SectionHeader>
 
       {/* Summary cards */}
-      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,1fr)" : "repeat(6,1fr)", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 20 }}>
         <Card label="Active Accounts" value={`${totals.activeCount} / ${accounts.length}`} sub="Engines running" color="#4ade80" />
         <Card
           label="Total Equity"
@@ -767,7 +767,7 @@ function EngineStatus({ account, mob }) {
       })()}
 
       {/* Engine stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(170px,1fr))", gap: 10, marginBottom: 14 }}>
         <Card label="Balance" value={`$${s.balance.toLocaleString()}`} sub={`Day start: $${s.dayStartBalance.toLocaleString()}`} color="#60a5fa" />
         <Card label="Equity" value={`$${s.equity.toLocaleString()}`} sub={`P&L: $${(s.equity - s.dayStartBalance).toFixed(2)}`} color={s.equity >= s.dayStartBalance ? "#4ade80" : "#f87171"} />
         <Card label="Activity" value={`${s.h4Scans} / ${s.m10Scans}`} sub={`H4 scans / M10 scans`} color="#60a5fa" />
@@ -873,9 +873,351 @@ function OpenPositions({ account, mob }) {
   );
 }
 
+/* ── watchlist setup-detail helpers ────────────────────────────── */
+
+// Format a price with appropriate precision based on magnitude
+const fmtPrice = (p) => {
+  if (p == null || isNaN(p)) return "—";
+  if (Math.abs(p) < 10) return p.toFixed(5);
+  if (Math.abs(p) < 100) return p.toFixed(3);
+  if (Math.abs(p) < 1000) return p.toFixed(2);
+  return p.toFixed(2);
+};
+
+// Format USD with thousands separator
+const fmtUsd = (n) => {
+  if (n == null || isNaN(n)) return "—";
+  return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+};
+
+// Format a percent (input 0-1 → "62.8%")
+const fmtPct = (n, digits = 1) => {
+  if (n == null || isNaN(n)) return "—";
+  return `${(n * 100).toFixed(digits)}%`;
+};
+
+// Compute Gate=100 ETA. The engine requires 100 M10 forward bars after
+// scan_time before firing entries. 24/7 instruments accumulate bars
+// continuously (16h 40min wall-clock). RTH stocks accumulate only during
+// the 6.5h NYSE session (≈2.56 trading days).
+//
+// instType: forex | metal | commodity | crypto | index | stock
+const computeGateEta = (scanTimeIso, instType) => {
+  if (!scanTimeIso) return { ready: false, etaMs: null, label: "—" };
+  const scanTime = new Date(scanTimeIso);
+  if (isNaN(scanTime)) return { ready: false, etaMs: null, label: "—" };
+
+  let etaTime;
+  if (instType === "stock") {
+    // RTH: 39 M10 bars per day (6.5h × 6 bars/h). 100 / 39 = 2.564 days.
+    // Naive weekend-skip; ignore holidays for v1.
+    const tradingDaysNeeded = 100 / 39;
+    let cursor = new Date(scanTime.getTime());
+    let daysAdded = 0;
+    while (daysAdded < tradingDaysNeeded) {
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+      const dow = cursor.getUTCDay();
+      if (dow !== 0 && dow !== 6) {
+        const remaining = tradingDaysNeeded - daysAdded;
+        if (remaining >= 1) {
+          daysAdded += 1;
+        } else {
+          // Add fractional day in minutes (390 RTH min/day × remaining)
+          cursor.setUTCMinutes(cursor.getUTCMinutes() + Math.round(remaining * 390));
+          daysAdded = tradingDaysNeeded;
+        }
+      }
+    }
+    etaTime = cursor;
+  } else {
+    // 24/7: 100 bars × 10 min = 1000 minutes after scan
+    etaTime = new Date(scanTime.getTime() + 1000 * 60 * 1000);
+  }
+
+  const now = Date.now();
+  const etaMs = etaTime.getTime() - now;
+  const ready = etaMs <= 0;
+
+  if (ready) {
+    return { ready: true, etaMs, label: "GATE CLEAR — awaiting M10 break" };
+  }
+
+  const totalMin = Math.floor(etaMs / 60000);
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+
+  if (hours < 24) {
+    return {
+      ready: false,
+      etaMs,
+      label: `gate clears in ${hours}h ${mins}m`,
+    };
+  }
+
+  // > 24h — show day + time
+  const dayLabel = etaTime.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return { ready: false, etaMs, label: `gate clears ${dayLabel} PDT` };
+};
+
+// Heuristic instrument-class lookup when wl_json doesn't carry inst_type.
+// Mirrors the engine's universe classification.
+const inferInstType = (symbol) => {
+  if (!symbol) return "forex";
+  const s = symbol.toUpperCase();
+  // Crypto suffix
+  if (s.endsWith("USD") && /^(BTC|ETH|XBT|SOL|DOT|AVAX|LINK|DOGE|XRP|ADA|MATIC)/.test(s)) return "crypto";
+  // Metals
+  if (s.startsWith("XAU") || s.startsWith("XAG")) return "metal";
+  // Oil & commodities
+  if (/^(USO|UCO|BNO|CRUDE|BRENT|NATGAS)$/.test(s)) return "commodity";
+  // Indices
+  if (/^(SPX|NDX|DJI|RUT|US500|US100|US30|US2000|GER40|UK100|JP225|FRA40|EUR50|HK50|AUS200)/.test(s)) return "index";
+  // Forex pairs (3+3 letters, no digits)
+  if (/^[A-Z]{6}$/.test(s)) return "forex";
+  // Default to stock
+  return "stock";
+};
+
+/* ── watchlist setup-detail panel ──────────────────────────────── */
+
+function WatchlistDetailPanel({ entry, account, mob }) {
+  // Refresh every 30s so countdowns stay live (gate ETA, age)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const e = entry;
+  const instType = e.instType || inferInstType(e.symbol);
+  const gate = computeGateEta(e.scanTime, instType);
+
+  // Risk per trade $: balance × engine RISK_PCT. Default to 0.80% (V2 PROD/Challenge).
+  // Pull true value from the variant config when available.
+  const riskPct = (account?.config?.risk_pct ?? 0.008);
+  const balance = account?.meta?.currentBalance ?? account?.engineState?.balance ?? 100000;
+  const riskUsd = balance * riskPct;
+
+  // Compute RR ratio if we have break level + stop + target
+  let rrRatio = null;
+  const brk = e.candidateBreakLevel;
+  if (brk != null && e.stopPrice != null && e.targetPrice != null) {
+    const stopDist = Math.abs(brk - e.stopPrice);
+    const targDist = Math.abs(e.targetPrice - brk);
+    if (stopDist > 0) rrRatio = targDist / stopDist;
+  }
+
+  // Risk distance in $ from break to stop (only valid when break_level lands)
+  let breakToStop = null, breakToTarget = null;
+  if (brk != null) {
+    if (e.stopPrice != null) breakToStop = Math.abs(brk - e.stopPrice);
+    if (e.targetPrice != null) breakToTarget = Math.abs(e.targetPrice - brk);
+  }
+
+  // Setup age derived from scanTime to avoid clock skew
+  let ageLabel = fmtAge(e.ageMinutes);
+  if (e.scanTime) {
+    const ageMin = Math.floor((Date.now() - new Date(e.scanTime).getTime()) / 60000);
+    if (!isNaN(ageMin) && ageMin >= 0) ageLabel = fmtAge(ageMin);
+  }
+
+  // Section style helpers
+  const sectionTitle = {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
+    textTransform: "uppercase", color: "#888",
+    margin: "0 0 8px",
+  };
+  const fieldRow = {
+    display: "grid",
+    gridTemplateColumns: mob ? "minmax(110px,auto) 1fr" : "minmax(140px,auto) 1fr",
+    gap: 8, padding: "3px 0", fontSize: 12,
+  };
+  const fieldLabel = { color: "#888" };
+  const fieldVal = { color: "#e0e0e0", fontFamily: "monospace", wordBreak: "break-word" };
+  const sectionBox = {
+    background: "#13131f", borderRadius: 8, padding: "12px 14px",
+    border: "1px solid #1f1f2f", minWidth: 0,
+  };
+  const grid = {
+    display: "grid",
+    gridTemplateColumns: mob ? "1fr" : "1fr 1fr",
+    gap: 10,
+  };
+
+  return (
+    <div style={{
+      background: "#0d0d18", padding: mob ? "12px 10px" : "14px 16px",
+      borderTop: "1px solid #1f1f2f", borderBottom: "1px solid #1f1f2f",
+    }}>
+      <div style={grid}>
+        {/* TRIGGER */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Trigger</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>{e.direction === "bullish" ? "Break above" : "Break below"}</span>
+            <span style={fieldVal}>
+              {brk != null ? fmtPrice(brk) : <span style={{ color: "#555", fontStyle: "italic" }}>calculating…</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Pivot price</span>
+            <span style={fieldVal}>
+              {e.candidatePivotPrice != null ? fmtPrice(e.candidatePivotPrice) : <span style={{ color: "#555", fontStyle: "italic" }}>calculating…</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Direction</span>
+            <span style={{ ...fieldVal, color: e.direction === "bullish" ? "#4ade80" : "#f87171" }}>
+              {e.direction === "bullish" ? "bullish" : "bearish"} ({e.setupType} {e.setupType === "IBO" ? "breakout" : "continuation"})
+            </span>
+          </div>
+        </div>
+
+        {/* RISK */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Risk (if entry fires at break)</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Stop</span>
+            <span style={{ ...fieldVal, color: "#f87171" }}>
+              {fmtPrice(e.stopPrice)}
+              {breakToStop != null && <span style={{ color: "#666", marginLeft: 6 }}>(−{fmtPrice(breakToStop)})</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Target</span>
+            <span style={{ ...fieldVal, color: "#4ade80" }}>
+              {fmtPrice(e.targetPrice)}
+              {breakToTarget != null && <span style={{ color: "#666", marginLeft: 6 }}>(+{fmtPrice(breakToTarget)})</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>RR at entry</span>
+            <span style={fieldVal}>
+              {rrRatio != null ? `${rrRatio.toFixed(2)} : 1` : <span style={{ color: "#555", fontStyle: "italic" }}>needs break level</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Risk per trade</span>
+            <span style={fieldVal}>{fmtUsd(riskUsd)} <span style={{ color: "#666" }}>({(riskPct * 100).toFixed(2)}% of {fmtUsd(balance)})</span></span>
+          </div>
+          {account?.config?.stop_mode && (
+            <div style={{ fontSize: 10, color: "#555", marginTop: 6, fontStyle: "italic" }}>
+              Note: V2 strategies may shift stop to pivot_half_fib at fire time.
+            </div>
+          )}
+        </div>
+
+        {/* IMPULSE */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Impulse (4H structure)</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Started at</span>
+            <span style={fieldVal}>{fmtPrice(e.impulseStartPrice)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Ended at</span>
+            <span style={fieldVal}>{fmtPrice(e.impulseEndPrice)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Leg size</span>
+            <span style={fieldVal}>
+              {e.impulseLeg != null ? fmtPrice(e.impulseLeg) : "—"}
+              {e.atrMultiple != null && <span style={{ color: "#666", marginLeft: 6 }}>· {e.atrMultiple.toFixed(2)}× ATR</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Pullback depth</span>
+            <span style={fieldVal}>{fmtPct(e.pullbackDepth)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Consistency</span>
+            <span style={fieldVal}>{fmtPct(e.consistency)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Fib 0.786</span>
+            <span style={fieldVal}>{fmtPrice(e.fib786)}</span>
+          </div>
+        </div>
+
+        {/* GATE */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Gate (when does it become tradable)</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Scan time</span>
+            <span style={fieldVal}>
+              {e.scanTime ? new Date(e.scanTime).toLocaleString("en-US", {
+                timeZone: "America/Los_Angeles", month: "short", day: "numeric",
+                hour: "2-digit", minute: "2-digit", hour12: false,
+              }) + " PDT" : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Age</span>
+            <span style={fieldVal}>{ageLabel}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Bars used</span>
+            <span style={fieldVal}>
+              {e.barsElapsed ?? "—"} / {e.maxEntryBars ?? "—"}
+              {e.barsRemaining != null && <span style={{ color: "#666", marginLeft: 6 }}>({e.barsRemaining} remaining)</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Gate clears</span>
+            <span style={{ ...fieldVal, color: gate.ready ? "#4ade80" : "#facc15" }}>{gate.label}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Inst type</span>
+            <span style={fieldVal}>
+              {instType}
+              {!e.instType && <span style={{ color: "#555", marginLeft: 6, fontStyle: "italic" }}>(inferred)</span>}
+            </span>
+          </div>
+        </div>
+
+        {/* QUALITY */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Quality</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Score</span>
+            <span style={{ ...fieldVal, color: e.qualityScore >= 0.6 ? "#4ade80" : e.qualityScore >= 0.5 ? "#facc15" : "#888" }}>
+              {(e.qualityScore * 100).toFixed(1)}%
+              {account?.config?.quality_gate != null && (
+                <span style={{ color: "#666", marginLeft: 6 }}>(gate: {(account.config.quality_gate / 100).toFixed(2)})</span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Status</span>
+            <span style={fieldVal}>{e.status}</span>
+          </div>
+          {e.subScores && typeof e.subScores === "object" && (
+            <div style={{ marginTop: 8, fontSize: 11, color: "#666" }}>
+              <div style={{ marginBottom: 4 }}>Sub-scores:</div>
+              {Object.entries(e.subScores).map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", paddingLeft: 8 }}>
+                  <span>{k}</span>
+                  <span style={{ fontFamily: "monospace" }}>{typeof v === "number" ? v.toFixed(3) : String(v)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── watchlist with priority queue ─────────────────────────────── */
 
 function Watchlist({ account, mob }) {
+  const [expanded, setExpanded] = useState(new Set());
   if (!account?.engineState) return null;
   const { watchlist: rawWatchlist, recentRemovals = [] } = account.engineState;
 
@@ -900,7 +1242,7 @@ function Watchlist({ account, mob }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #333" }}>
-                  {["#", "Symbol", "Dir", "Type", "Stop", "Target", "Score", "Bars", "Age", "Pullback", "Status"].map(h => (
+                  {["", "#", "Symbol", "Dir", "Type", "Stop", "Target", "Score", "Bars", "Age", "Pullback", "Status"].map(h => (
                     <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -908,8 +1250,36 @@ function Watchlist({ account, mob }) {
               <tbody>
                 {watchlist.map((e, i) => {
                   const blocked = openSymbols.has(e.symbol);
+                  const rowKey = `${e.symbol}-${e.scanTime || i}`;
+                  const isOpen = expanded.has(rowKey);
+                  const toggle = () => {
+                    const next = new Set(expanded);
+                    if (isOpen) next.delete(rowKey);
+                    else next.add(rowKey);
+                    setExpanded(next);
+                  };
                   return (
-                  <tr key={i} style={{ borderBottom: "1px solid #1f1f2f", opacity: blocked ? 0.45 : 1 }}>
+                  <Fragment key={rowKey}>
+                  <tr
+                    key={`row-${rowKey}`}
+                    onClick={toggle}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
+                    aria-expanded={isOpen}
+                    style={{
+                      borderBottom: isOpen ? "none" : "1px solid #1f1f2f",
+                      opacity: blocked ? 0.45 : 1,
+                      cursor: "pointer",
+                      background: isOpen ? "#22223344" : "transparent",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(ev) => { if (!isOpen) ev.currentTarget.style.background = "#22223322"; }}
+                    onMouseLeave={(ev) => { if (!isOpen) ev.currentTarget.style.background = "transparent"; }}
+                  >
+                    <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
+                      {isOpen ? "▾" : "▸"}
+                    </td>
                     <td style={{ padding: "8px 10px", color: "#60a5fa", fontWeight: 700, fontSize: 14 }}>{i + 1}</td>
                     <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{blocked ? " *" : ""}</td>
                     <td style={{ padding: "8px 10px" }}>
@@ -940,13 +1310,21 @@ function Watchlist({ account, mob }) {
                       </span>
                     </td>
                   </tr>
+                  {isOpen && (
+                    <tr key={`detail-${rowKey}`} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                      <td colSpan={12} style={{ padding: 0 }}>
+                        <WatchlistDetailPanel entry={e} account={account} mob={mob} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
           <div style={{ padding: "6px 10px", borderTop: "1px solid #1f1f2f", fontSize: 10, color: "#555", textAlign: "center" }}>
-            Sorted by quality score (priority queue) · * = symbol has open position (blocked)
+            Sorted by quality score (priority queue) · click any row for setup detail · * = symbol has open position (blocked)
           </div>
         </div>
       )}
@@ -1008,7 +1386,7 @@ function ScanActivity({ account, mob }) {
 
       <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: 14 }}>
         {/* H4 Scans */}
-        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14 }}>
+        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "#ccc" }}>
               H4 Scans <span style={{ color: "#888", fontWeight: 400 }}>({account.engineState.h4Scans} total)</span>
@@ -1079,7 +1457,7 @@ function ScanActivity({ account, mob }) {
         </div>
 
         {/* M10 Scans */}
-        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14 }}>
+        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14, minWidth: 0 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 10px", color: "#ccc" }}>
             M10 Entry Scans <span style={{ color: "#888", fontWeight: 400 }}>({account.engineState.m10Scans} total)</span>
           </h3>
@@ -1093,8 +1471,9 @@ function ScanActivity({ account, mob }) {
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                     padding: "6px 10px", background: "#12121f", borderRadius: 6, border: "1px solid #1f1f2f",
+                    flexWrap: "wrap", gap: 6,
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                       <span style={{
                         width: 6, height: 6, borderRadius: "50%",
                         background: scan.entriesTriggered > 0 ? "#4ade80" : "#333",
@@ -1102,7 +1481,7 @@ function ScanActivity({ account, mob }) {
                       }} />
                       <span style={{ fontSize: 11, color: "#888" }}>{fmtTime(scan.time)}</span>
                     </div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                       {statusEntries.map(([sym, bars]) => (
                         <span key={sym} style={{ fontSize: 10, color: "#888", fontFamily: "monospace" }}>
                           {sym} <span style={{ color: "#60a5fa" }}>{bars}</span>
@@ -1316,7 +1695,7 @@ function TradePerformance({ account, mob }) {
 
       {/* Stat cards: Win Rate / Expectancy / PF are engine-view (R-based);
           Realized $ / Live Balance are TRUTH (cTrader). */}
-      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,1fr)" : "repeat(6,1fr)", gap: 10, marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 8 }}>
         <Card
           label="Realized P&L"
           value={`${realizedPnl >= 0 ? "+" : ""}$${realizedPnl.toFixed(2)}`}
@@ -1542,8 +1921,8 @@ function AccountView({ account, mob }) {
         gap: 12,
         flexWrap: "wrap",
       }}>
-        <span style={{ width: 12, height: 12, borderRadius: "50%", background: account.color, display: "inline-block" }} />
-        <div style={{ flex: 1 }}>
+        <span style={{ width: 12, height: 12, borderRadius: "50%", background: account.color, display: "inline-block", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, overflowWrap: "break-word" }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{account.fullLabel}</div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
             Account #{account.accountId} · Gate {account.config?.quality_gate} ·

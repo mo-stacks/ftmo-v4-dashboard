@@ -4,3 +4,18 @@ html, body, #root {
   background: #0f0f1a;
   min-height: 100vh;
 }
+
+/* Prevent the whole page from being pushed wider than the viewport.
+   Inner scroll containers (table wrappers with overflowX:auto) still scroll,
+   but the document body cannot trigger zoom-out. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Grid/flex items default to min-width: auto, which prevents shrinking
+   below an unwrapped child's intrinsic width (like a wide table). Force
+   shrinking to fit the parent grid track. */
+.shrinkable {
+  min-width: 0;
+}

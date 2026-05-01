@@ -360,8 +360,12 @@ export function useSupabaseData() {
         if (currentBalance > peak) peak = currentBalance;
         const realizedPnl = Math.round((currentBalance - STARTING_BALANCE) * 100) / 100;
 
-        // Watchlist
+        // Watchlist — pass through extended setup-detail fields with graceful
+        // degradation. Fields marked with `?? null` are populated only after
+        // the engine + publish_to_supabase.py round-trip carries them. UI
+        // shows "—" when null.
         const watchlist = (state.watchlist || []).map(e => ({
+          // Core (already in publish_to_supabase wl_json)
           symbol: e.symbol,
           direction: e.direction,
           setupType: e.setupType,
@@ -374,6 +378,22 @@ export function useSupabaseData() {
           pullbackDepth: e.pullbackDepth,
           status: e.status,
           barsRemaining: e.barsRemaining,
+          // Extended setup-detail fields (added 2026-05-01).
+          // Engine flush of these into wl_json may lag the dashboard work.
+          stopDistance: e.stopDistance ?? null,
+          impulseStartPrice: e.impulseStartPrice ?? e.impulse_start_price ?? null,
+          impulseEndPrice: e.impulseEndPrice ?? e.impulse_end_price ?? null,
+          impulseLeg: e.impulseLeg ?? e.impulse_leg ?? null,
+          atrMultiple: e.atrMultiple ?? e.atr_multiple ?? null,
+          consistency: e.consistency ?? null,
+          fib786: e.fib786 ?? e.fib_786 ?? null,
+          scanTime: e.scanTime ?? e.scan_time ?? null,
+          subScores: e.subScores ?? e.sub_scores ?? null,
+          instType: e.instType ?? e.inst_type ?? null,
+          // Engine work pending — see SESSION_HANDOFF Watchlist Setup-Detail UI
+          candidateBreakLevel: e.candidateBreakLevel ?? e.candidate_break_level ?? null,
+          candidatePivotPrice: e.candidatePivotPrice ?? e.candidate_pivot_price ?? null,
+          candidateStopPrice: e.candidateStopPriceFib ?? e.candidate_stop_price_pivot_half_fib ?? null,
         }));
 
         // Open positions
