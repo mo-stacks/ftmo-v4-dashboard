@@ -403,13 +403,32 @@ export function useSupabaseData() {
           candles: e.candles ?? null,
         }));
 
-        // Open positions
+        // Open positions — pass through stop/target plus the original
+        // values (set at order placement and never modified by trailing).
+        // Original* fields are graceful-degradation `?? null` until the
+        // engine pipeline starts persisting them; until then the dashboard
+        // treats them as "same as live" and notes that trail-status detection
+        // is pending.
         const openPositions = (state.positions || []).map(p => ({
           symbol: p.symbol,
           side: p.side,
           entryPrice: p.entryPrice,
           currentPrice: p.currentPrice,
           unrealizedPnl: p.unrealizedPnl != null ? Math.round(p.unrealizedPnl * 100) / 100 : null,
+          // Live (current) stop and target — updated by trailing
+          stopLoss: p.stopLoss ?? null,
+          takeProfit: p.takeProfit ?? null,
+          // Original (entry-time) stop and target — never modified
+          originalStopLoss: p.originalStopLoss ?? null,
+          originalTakeProfit: p.originalTakeProfit ?? null,
+          // Position metadata
+          openTime: p.openTime ?? p.open_time ?? null,
+          volume: p.volume ?? null,
+          positionId: p.positionId ?? p.position_id ?? null,
+          // Per-position candles for the chart (engine work pending —
+          // shape mirrors watchlist: { h4: [...], m10: [...] } with
+          // unix-seconds t and o/h/l/c)
+          candles: p.candles ?? null,
         }));
 
         accountData[key] = {

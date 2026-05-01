@@ -163,9 +163,19 @@ export default function SetupChart({ entry, height = 280 }) {
     addLine(entry?.fib786, CHART_COLORS.fib786, "Fib 0.786");
     addLine(entry?.impulseStartPrice, CHART_COLORS.impulseStart, "Impulse start");
 
-    // Fit content to the new data
-    chartRef.current.timeScale().fitContent();
-  }, [candles, entry, hasData]);
+    // Pan to the right so the most recent ~40 bars are visible — that's
+    // where the setup is forming and where annotation lines live. The
+    // user can scroll/pan left to see historical context (all 120 H4 /
+    // 150 M10 bars stay loaded in the series).
+    const visibleBars = tf === "h4" ? 40 : 60;
+    const totalBars = data.length;
+    if (totalBars > 0) {
+      chartRef.current.timeScale().setVisibleLogicalRange({
+        from: Math.max(0, totalBars - visibleBars),
+        to: totalBars - 1 + 5, // small right padding so latest bar isn't flush against the price axis
+      });
+    }
+  }, [candles, entry, hasData, tf]);
 
   const tfBtn = (key, label) => {
     const active = tf === key;

@@ -833,6 +833,7 @@ function EngineStatus({ account, mob }) {
 /* ── open positions (per-account, from bridge at build time) ──── */
 
 function OpenPositions({ account, mob }) {
+  const [expanded, setExpanded] = useState(new Set());
   const positions = account?.openPositions || [];
   if (positions.length === 0) {
     return (
@@ -852,36 +853,345 @@ function OpenPositions({ account, mob }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #333" }}>
-                {["Symbol", "Side", "Entry", "Unrealized P&L"].map(h => (
+                {["", "Symbol", "Side", "Entry", "Stop", "Target", "Unrealized P&L"].map(h => (
                   <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {positions.map((p, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #1f1f2f" }}>
-                  <td style={{ padding: "8px 10px", fontWeight: 600 }}>{p.symbol}</td>
+              {positions.map((p, i) => {
+                const rowKey = `${p.symbol}-${p.positionId ?? p.openTime ?? i}`;
+                const isOpen = expanded.has(rowKey);
+                const toggle = () => {
+                  const next = new Set(expanded);
+                  if (isOpen) next.delete(rowKey);
+                  else next.add(rowKey);
+                  setExpanded(next);
+                };
+                // Trail detection: stop has moved if live differs from original
+                const trailEngaged = p.originalStopLoss != null && p.stopLoss != null
+                  && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9;
+                return (
+                <Fragment key={rowKey}>
+                <tr
+                  onClick={toggle}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
+                  aria-expanded={isOpen}
+                  style={{
+                    borderBottom: isOpen ? "none" : "1px solid #1f1f2f",
+                    cursor: "pointer",
+                    background: isOpen ? "#22223344" : "transparent",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(ev) => { if (!isOpen) ev.currentTarget.style.background = "#22223322"; }}
+                  onMouseLeave={(ev) => { if (!isOpen) ev.currentTarget.style.background = "transparent"; }}
+                >
+                  <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
+                    {isOpen ? "▾" : "▸"}
+                  </td>
+                  <td style={{ padding: "8px 10px", fontWeight: 600 }}>
+                    {p.symbol}
+                    {trailEngaged && <span style={{ marginLeft: 6, fontSize: 9, color: "#facc15", border: "1px solid #facc1544", padding: "1px 5px", borderRadius: 3 }}>TRAIL</span>}
+                  </td>
                   <td style={{ padding: "8px 10px" }}>
                     <span style={{ color: p.side === "BUY" ? "#4ade80" : "#f87171", fontSize: 12, fontWeight: 600 }}>
                       {p.side}
                     </span>
                   </td>
                   <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12 }}>
-                    {typeof p.entryPrice === "number" ? p.entryPrice.toFixed(p.entryPrice < 10 ? 4 : 2) : "—"}
+                    {fmtPrice(p.entryPrice)}
+                  </td>
+                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#f87171" }}>
+                    {fmtPrice(p.stopLoss)}
+                  </td>
+                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#4ade80" }}>
+                    {fmtPrice(p.takeProfit)}
                   </td>
                   <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 600, color: (p.unrealizedPnl ?? 0) >= 0 ? "#4ade80" : "#f87171" }}>
                     {p.unrealizedPnl != null ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}` : "—"}
                   </td>
                 </tr>
-              ))}
+                {isOpen && (
+                  <tr style={{ borderBottom: "1px solid #1f1f2f" }}>
+                    <td colSpan={7} style={{ padding: 0 }}>
+                      <PositionDetailPanel position={p} account={account} mob={mob} trailEngaged={trailEngaged} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
         <div style={{ padding: "6px 10px", borderTop: "1px solid #1f1f2f", fontSize: 10, color: "#555", textAlign: "center" }}>
-          {5 - positions.length} slot{5 - positions.length !== 1 ? "s" : ""} available for new entries
+          {5 - positions.length} slot{5 - positions.length !== 1 ? "s" : ""} available · click any row for position detail
         </div>
       </div>
     </>
+  );
+}
+
+/* ── position detail panel ─────────────────────────────────────── */
+
+function PositionDetailPanel({ position, account, mob, trailEngaged }) {
+  // Live ticker so unrealized P&L / current price recalculations stay fresh
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const p = position;
+
+  // Derive distances from current price to stop / target. These are the
+  // most-asked-about numbers when watching a live trade.
+  let distToStop = null, distToTarget = null, rMultipleNow = null;
+  if (p.currentPrice != null) {
+    if (p.stopLoss != null) distToStop = Math.abs(p.currentPrice - p.stopLoss);
+    if (p.takeProfit != null) distToTarget = Math.abs(p.takeProfit - p.currentPrice);
+    // Current R-multiple = unrealized / 1R risk. 1R = entry-to-original-stop
+    // distance, which we have only when originalStopLoss is populated.
+    const oneR = p.originalStopLoss != null && p.entryPrice != null
+      ? Math.abs(p.entryPrice - p.originalStopLoss) : null;
+    if (oneR != null && oneR > 0) {
+      const direction = p.side === "BUY" ? 1 : -1;
+      rMultipleNow = (p.currentPrice - p.entryPrice) * direction / oneR;
+    }
+  }
+
+  // Time held
+  let heldLabel = "—";
+  if (p.openTime) {
+    const heldMin = Math.floor((Date.now() - new Date(p.openTime).getTime()) / 60000);
+    if (!isNaN(heldMin) && heldMin >= 0) heldLabel = fmtAge(heldMin);
+  }
+
+  // Risk USD = balance × variant risk pct
+  const riskPct = (account?.config?.risk_pct ?? 0.008);
+  const balance = account?.meta?.currentBalance ?? account?.engineState?.balance ?? 100000;
+  const riskUsd = balance * riskPct;
+
+  // Stop/target movement deltas (vs originals) — only meaningful when
+  // engine has populated originalStopLoss / originalTakeProfit
+  const stopMoved = p.originalStopLoss != null && p.stopLoss != null
+    && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9;
+  const targetMoved = p.originalTakeProfit != null && p.takeProfit != null
+    && Math.abs(p.originalTakeProfit - p.takeProfit) > 1e-9;
+
+  // Section style — same as WatchlistDetailPanel for visual consistency
+  const sectionTitle = {
+    fontSize: mob ? 9 : 10, fontWeight: 700, letterSpacing: 1.1,
+    textTransform: "uppercase", color: "#888",
+    margin: mob ? "0 0 6px" : "0 0 8px",
+  };
+  const fieldRow = {
+    display: "grid",
+    gridTemplateColumns: mob ? "minmax(90px,auto) 1fr" : "minmax(140px,auto) 1fr",
+    gap: mob ? 6 : 8,
+    padding: mob ? "2px 0" : "3px 0",
+    fontSize: mob ? 10 : 12,
+    lineHeight: mob ? 1.35 : 1.45,
+  };
+  const fieldLabel = { color: "#888" };
+  const fieldVal = { color: "#e0e0e0", fontFamily: "monospace", wordBreak: "break-word" };
+  const sectionBox = {
+    background: "#13131f",
+    borderRadius: mob ? 6 : 8,
+    padding: mob ? "9px 10px" : "12px 14px",
+    border: "1px solid #1f1f2f",
+    minWidth: 0,
+  };
+  const grid = {
+    display: "grid",
+    gridTemplateColumns: mob ? "1fr" : "1fr 1fr",
+    gap: mob ? 8 : 10,
+  };
+
+  // Adapt the position into a SetupChart-compatible "entry" so the same
+  // chart annotations work. The chart cares about: candles, direction,
+  // a few price levels. We map position-side → bullish/bearish and pass
+  // entry/stop/target as the relevant lines.
+  const chartEntry = {
+    symbol: p.symbol,
+    candles: p.candles,
+    direction: p.side === "BUY" ? "bullish" : "bearish",
+    // Reuse the same field names the chart expects, but mapped to
+    // position semantics:
+    //   impulseStartPrice → originalStopLoss (entry-time stop)
+    //   impulseEndPrice → originalTakeProfit (entry-time target)
+    //   stopPrice → live stopLoss
+    //   targetPrice → live takeProfit
+    //   fib786 → entryPrice (the entry line)
+    //   candidateBreakLevel → currentPrice (a "now" line)
+    impulseStartPrice: p.originalStopLoss,
+    impulseEndPrice: p.originalTakeProfit,
+    stopPrice: p.stopLoss,
+    targetPrice: p.takeProfit,
+    fib786: p.entryPrice,
+    candidateBreakLevel: p.currentPrice,
+  };
+
+  return (
+    <div style={{
+      background: "#0d0d18",
+      padding: mob ? "10px 8px" : "14px 16px",
+      borderTop: "1px solid #1f1f2f",
+      borderBottom: "1px solid #1f1f2f",
+    }}>
+      {/* Chart (lazy-loaded) */}
+      <div style={{ marginBottom: mob ? 10 : 12 }}>
+        <Suspense fallback={
+          <div style={{
+            background: "#13131f", borderRadius: mob ? 6 : 8, border: "1px solid #1f1f2f",
+            padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
+          }}>Loading chart…</div>
+        }>
+          <SetupChart entry={chartEntry} height={mob ? 220 : 280} />
+        </Suspense>
+      </div>
+
+      <div style={grid}>
+        {/* ENTRY */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Entry</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Side</span>
+            <span style={{ ...fieldVal, color: p.side === "BUY" ? "#4ade80" : "#f87171" }}>
+              {p.side === "BUY" ? "LONG" : "SHORT"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Entry price</span>
+            <span style={fieldVal}>{fmtPrice(p.entryPrice)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Current price</span>
+            <span style={fieldVal}>
+              {fmtPrice(p.currentPrice)}
+              {p.entryPrice != null && p.currentPrice != null && (
+                <span style={{ color: "#666", marginLeft: 6 }}>
+                  ({((p.currentPrice - p.entryPrice) / p.entryPrice * 100).toFixed(2)}%)
+                </span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Time held</span>
+            <span style={fieldVal}>{heldLabel}</span>
+          </div>
+          {p.volume != null && (
+            <div style={fieldRow}>
+              <span style={fieldLabel}>Volume</span>
+              <span style={fieldVal}>{p.volume}</span>
+            </div>
+          )}
+        </div>
+
+        {/* STOP */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>
+            Stop
+            {trailEngaged && (
+              <span style={{ marginLeft: 8, fontSize: 9, color: "#facc15", letterSpacing: 0.5 }}>
+                · TRAIL ENGAGED
+              </span>
+            )}
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Original stop</span>
+            <span style={fieldVal}>
+              {p.originalStopLoss != null ? fmtPrice(p.originalStopLoss) : (
+                <span style={{ color: "#555", fontStyle: "italic" }}>tracking pending</span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Live stop</span>
+            <span style={{ ...fieldVal, color: stopMoved ? "#facc15" : "#f87171" }}>
+              {fmtPrice(p.stopLoss)}
+              {stopMoved && p.originalStopLoss != null && (
+                <span style={{ color: "#666", marginLeft: 6 }}>
+                  ({((p.stopLoss - p.originalStopLoss) >= 0 ? "+" : "")}{fmtPrice(p.stopLoss - p.originalStopLoss)})
+                </span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Distance from price</span>
+            <span style={fieldVal}>
+              {distToStop != null ? fmtPrice(distToStop) : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* TARGET */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>
+            Target
+            {targetMoved && (
+              <span style={{ marginLeft: 8, fontSize: 9, color: "#facc15", letterSpacing: 0.5 }}>
+                · MOVED
+              </span>
+            )}
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Original target</span>
+            <span style={fieldVal}>
+              {p.originalTakeProfit != null ? fmtPrice(p.originalTakeProfit) : (
+                <span style={{ color: "#555", fontStyle: "italic" }}>tracking pending</span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Live target</span>
+            <span style={{ ...fieldVal, color: targetMoved ? "#facc15" : "#4ade80" }}>
+              {fmtPrice(p.takeProfit)}
+              {targetMoved && p.originalTakeProfit != null && (
+                <span style={{ color: "#666", marginLeft: 6 }}>
+                  ({((p.takeProfit - p.originalTakeProfit) >= 0 ? "+" : "")}{fmtPrice(p.takeProfit - p.originalTakeProfit)})
+                </span>
+              )}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Distance from price</span>
+            <span style={fieldVal}>
+              {distToTarget != null ? fmtPrice(distToTarget) : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* P&L */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>P&L</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Unrealized</span>
+            <span style={{ ...fieldVal, color: (p.unrealizedPnl ?? 0) >= 0 ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+              {p.unrealizedPnl != null
+                ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}`
+                : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>R-multiple</span>
+            <span style={{ ...fieldVal, color: (rMultipleNow ?? 0) >= 0 ? "#4ade80" : "#f87171" }}>
+              {rMultipleNow != null
+                ? `${rMultipleNow >= 0 ? "+" : ""}${rMultipleNow.toFixed(2)}R`
+                : <span style={{ color: "#555", fontStyle: "italic" }}>needs original stop</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>1R risk</span>
+            <span style={fieldVal}>{fmtUsd(riskUsd)}
+              <span style={{ color: "#666", marginLeft: 6 }}>({(riskPct * 100).toFixed(2)}% of {fmtUsd(balance)})</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
