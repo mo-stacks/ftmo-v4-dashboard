@@ -1225,6 +1225,470 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
   );
 }
 
+/* ── trade history (closed trades, paginated) ──────────────────── */
+
+const PAGE_SIZE = 10;
+
+function TradeHistory({ account, mob }) {
+  const [page, setPage] = useState(0);
+  const [expanded, setExpanded] = useState(new Set());
+
+  // Trades come from useSupabaseData sorted by exit_time ASC. Display
+  // newest-first so "page 1" is the last 10 closed trades.
+  const allTrades = useMemo(() => {
+    const t = [...(account?.trades || [])];
+    t.reverse();
+    return t;
+  }, [account?.trades]);
+
+  const totalPages = Math.max(1, Math.ceil(allTrades.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * PAGE_SIZE;
+  const trades = allTrades.slice(start, start + PAGE_SIZE);
+
+  if (allTrades.length === 0) {
+    return (
+      <>
+        <SectionHeader>Trade History (0 closed)</SectionHeader>
+        <div style={{ background: "#13131c", borderRadius: 10, padding: 16, border: "1px solid #22222e", textAlign: "center", color: "#666", fontSize: 13, marginBottom: 14 }}>
+          No closed trades yet
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SectionHeader>Trade History ({allTrades.length} closed · page {safePage + 1}/{totalPages})</SectionHeader>
+      <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden", marginBottom: 14 }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #333" }}>
+                {["", "When", "Symbol", "Dir", "Type", "Entry", "Exit", "R", "P&L", "Reason"].map(h => (
+                  <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#888", fontWeight: 500, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {trades.map((t, i) => {
+                const rowKey = `${t.posId || t.ts || i}-${t.sym}`;
+                const isOpen = expanded.has(rowKey);
+                const toggle = () => {
+                  const next = new Set(expanded);
+                  if (isOpen) next.delete(rowKey);
+                  else next.add(rowKey);
+                  setExpanded(next);
+                };
+                const pnlColor = (t.brokerPnl ?? t.enginePnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b";
+                const rColor = (t.r ?? 0) >= 0 ? "#22b89a" : "#cf5b5b";
+                return (
+                  <Fragment key={rowKey}>
+                    <tr
+                      onClick={toggle}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
+                      aria-expanded={isOpen}
+                      style={{
+                        borderBottom: isOpen ? "none" : "1px solid #1a1a26",
+                        cursor: "pointer",
+                        background: isOpen ? "#22222e44" : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(ev) => { if (!isOpen) ev.currentTarget.style.background = "#22222e22"; }}
+                      onMouseLeave={(ev) => { if (!isOpen) ev.currentTarget.style.background = "transparent"; }}
+                    >
+                      <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
+                        {isOpen ? "▾" : "▸"}
+                      </td>
+                      <td style={{ padding: "8px 10px", color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtTradeWhen(t.ts)}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 600 }}>{t.sym || "—"}</td>
+                      <td style={{ padding: "8px 10px" }}>
+                        <span style={{ color: t.dir === "bullish" || t.dir === "BUY" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
+                          {(t.dir === "bullish" || t.dir === "BUY") ? "LONG" : "SHORT"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "8px 10px" }}>
+                        {t.mode ? (
+                          <span style={{ background: t.mode === "IBO" ? "#7eb4fa22" : "#a78bfa22", color: t.mode === "IBO" ? "#7eb4fa" : "#a78bfa", padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{t.mode}</span>
+                        ) : "—"}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{fmtPrice(t.entry)}</td>
+                      <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{fmtPrice(t.exit)}</td>
+                      <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600, color: rColor }}>
+                        {t.r != null ? `${t.r >= 0 ? "+" : ""}${t.r.toFixed(2)}R` : "—"}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600, color: pnlColor }}>
+                        {(t.brokerPnl ?? t.enginePnl) != null ? `${(t.brokerPnl ?? t.enginePnl) >= 0 ? "+" : ""}$${(t.brokerPnl ?? t.enginePnl).toFixed(2)}` : "—"}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontSize: 11, color: "#888" }}>{t.reason || "—"}</td>
+                    </tr>
+                    {isOpen && (
+                      <tr style={{ borderBottom: "1px solid #1a1a26" }}>
+                        <td colSpan={10} style={{ padding: 0 }}>
+                          <div style={mob ? {
+                            position: "sticky", left: 0,
+                            width: "calc(100vw - 24px)",
+                            maxWidth: "100%", boxSizing: "border-box",
+                          } : undefined}>
+                            <TradeDetailPanel trade={t} account={account} mob={mob} />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination — Prev/Next + jump-to-page chips for short histories,
+            or just Prev/Next for very long ones. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderTop: "1px solid #1a1a26", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setPage(Math.max(0, safePage - 1))}
+              disabled={safePage === 0}
+              style={pageBtn(safePage === 0)}
+            >‹ Prev</button>
+            {/* Page chips — render up to 7 around current; truncate with … if needed */}
+            {paginationChips(totalPages, safePage).map((p, i) => p === "..."
+              ? <span key={`gap-${i}`} style={{ color: "#555", fontSize: 11, padding: "0 4px" }}>…</span>
+              : <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  style={pageBtn(false, p === safePage)}
+                >{p + 1}</button>
+            )}
+            <button
+              onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))}
+              disabled={safePage >= totalPages - 1}
+              style={pageBtn(safePage >= totalPages - 1)}
+            >Next ›</button>
+          </div>
+          <div style={{ fontSize: 10, color: "#555" }}>
+            showing {start + 1}–{Math.min(start + PAGE_SIZE, allTrades.length)} of {allTrades.length}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const pageBtn = (disabled, active) => ({
+  background: active ? "#22222e" : "transparent",
+  color: disabled ? "#333" : active ? "#e0e0ea" : "#888",
+  border: `1px solid ${active ? "#3a3a4e" : "#1a1a26"}`,
+  borderRadius: 4,
+  padding: "3px 9px",
+  fontSize: 11,
+  fontFamily: "inherit",
+  fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer",
+  minWidth: 28,
+  textAlign: "center",
+});
+
+// Compute which page numbers to render in the chip strip. Returns an
+// array of page indices and "..." separators. For ≤7 pages, show all.
+// For more, show first/last + window of 5 around current.
+function paginationChips(total, current) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+  const chips = [];
+  chips.push(0);
+  let start = Math.max(1, current - 2);
+  let end = Math.min(total - 2, current + 2);
+  if (start > 1) chips.push("...");
+  for (let i = start; i <= end; i++) chips.push(i);
+  if (end < total - 2) chips.push("...");
+  chips.push(total - 1);
+  return chips;
+}
+
+// Compact "when" formatter for the trade history row — keeps it readable
+// on mobile by collapsing relative-time display.
+function fmtTradeWhen(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  const now = Date.now();
+  const ageMs = now - d.getTime();
+  const ageHr = ageMs / 3_600_000;
+  if (ageHr < 24) return d.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (ageHr < 24 * 7) return d.toLocaleString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toLocaleString("en-US", { month: "short", day: "numeric" });
+}
+
+/* ── trade detail panel (closed-trade dropdown content) ────────── */
+
+function TradeDetailPanel({ trade, account, mob }) {
+  const t = trade;
+
+  // Direction normalization — engine writes "bullish"/"bearish" in newer
+  // rows but older history may carry "BUY"/"SELL".
+  const dirNormal = t.dir === "bullish" || t.dir === "BUY" ? "bullish" : "bearish";
+
+  // Original 1R distance — entry to original stop (or stopPrice as fallback).
+  // Used to sanity-check the engine's r value and to size the Risk USD line.
+  const oneR = t.entry != null && t.sl != null ? Math.abs(t.entry - t.sl) : null;
+
+  // Convert exit_time / scan_time / entry_time to unix seconds for the
+  // chart's focusTime + markers. If the engine isn't yet writing
+  // entry_time, fall back to exit_time as the focus point.
+  const tsExit = t.ts ? Math.floor(new Date(t.ts).getTime() / 1000) : null;
+  const tsEntry = t.entryTime ? Math.floor(new Date(t.entryTime).getTime() / 1000) : null;
+  const focusTs = tsEntry || tsExit;
+
+  // Series markers for the chart — green/red dots at entry and exit.
+  const markers = [];
+  if (tsEntry) {
+    markers.push({
+      time: tsEntry,
+      position: dirNormal === "bullish" ? "belowBar" : "aboveBar",
+      color: "#7eb4fa",
+      shape: dirNormal === "bullish" ? "arrowUp" : "arrowDown",
+      text: "Entry",
+    });
+  }
+  if (tsExit && tsExit !== tsEntry) {
+    const winning = (t.r ?? 0) >= 0;
+    markers.push({
+      time: tsExit,
+      position: dirNormal === "bullish" ? "aboveBar" : "belowBar",
+      color: winning ? "#22b89a" : "#cf5b5b",
+      shape: "circle",
+      text: `Exit ${t.reason || ""}`.trim(),
+    });
+  }
+
+  // Map trade to the chart's expected `entry` shape. Reuses watchlist
+  // semantics: the field names match what SetupChart already reads.
+  const chartEntry = {
+    symbol: t.sym,
+    candles: t.candles,
+    direction: dirNormal,
+    impulseStartPrice: t.impulseStartPrice,
+    impulseEndPrice:   t.impulseEndPrice,
+    stopPrice:         t.sl,
+    targetPrice:       t.tp,
+    fib786:            t.fib786,
+    candidateBreakLevel: null,  // closed trades don't need a "break" line
+  };
+
+  // Time-held label
+  let heldLabel = "—";
+  if (t.barsHeld != null) {
+    heldLabel = `${t.barsHeld} bars`;
+  } else if (tsEntry && tsExit) {
+    const min = Math.floor((tsExit - tsEntry) / 60);
+    if (min >= 0) heldLabel = fmtAge(min);
+  }
+
+  // Section style mirrors the watchlist/position panels for consistency
+  const sectionTitle = {
+    fontSize: mob ? 9 : 10, fontWeight: 700, letterSpacing: 1.1,
+    textTransform: "uppercase", color: "#888",
+    margin: mob ? "0 0 6px" : "0 0 8px",
+  };
+  const fieldRow = {
+    display: "grid",
+    gridTemplateColumns: mob ? "minmax(90px,auto) 1fr" : "minmax(140px,auto) 1fr",
+    gap: mob ? 6 : 8,
+    padding: mob ? "2px 0" : "3px 0",
+    fontSize: mob ? 10 : 12,
+    lineHeight: mob ? 1.35 : 1.45,
+  };
+  const fieldLabel = { color: "#888" };
+  const fieldVal = { color: "#e0e0ea", fontFamily: "'Space Grotesk', ui-monospace, monospace", wordBreak: "break-word" };
+  const sectionBox = {
+    background: "#0e0e15",
+    borderRadius: mob ? 6 : 8,
+    padding: mob ? "9px 10px" : "12px 14px",
+    border: "1px solid #1a1a26",
+    minWidth: 0,
+  };
+  const grid = {
+    display: "grid",
+    gridTemplateColumns: mob ? "1fr" : "1fr 1fr",
+    gap: mob ? 8 : 10,
+  };
+
+  const winning = (t.r ?? 0) >= 0;
+  const pnl = t.brokerPnl ?? t.enginePnl;
+
+  return (
+    <div style={{
+      background: "#0a0a10",
+      padding: mob ? "10px 8px" : "14px 16px",
+      borderTop: "1px solid #1a1a26",
+      borderBottom: "1px solid #1a1a26",
+    }}>
+      {/* Chart — focus on entry, mark entry + exit */}
+      <div style={{ marginBottom: mob ? 10 : 12 }}>
+        <Suspense fallback={
+          <div style={{
+            background: "#0e0e15", borderRadius: mob ? 6 : 8, border: "1px solid #1a1a26",
+            padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
+          }}>Loading chart…</div>
+        }>
+          <SetupChart
+            entry={chartEntry}
+            height={mob ? 220 : 280}
+            focusTime={focusTs}
+            markers={markers}
+          />
+        </Suspense>
+      </div>
+
+      <div style={grid}>
+        {/* SETUP */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Setup</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Type</span>
+            <span style={fieldVal}>
+              {t.mode || "—"} {t.mode && (t.mode === "IBO" ? "(breakout)" : "(continuation)")}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Direction</span>
+            <span style={{ ...fieldVal, color: dirNormal === "bullish" ? "#22b89a" : "#cf5b5b" }}>
+              {dirNormal}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Quality score</span>
+            <span style={fieldVal}>
+              {t.score != null ? `${(t.score * 100).toFixed(1)}%` : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Pullback depth</span>
+            <span style={fieldVal}>{t.pullbackDepth != null ? `${(t.pullbackDepth * 100).toFixed(1)}%` : "—"}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>ATR multiple</span>
+            <span style={fieldVal}>{t.atrMultiple != null ? `${t.atrMultiple.toFixed(2)}×` : "—"}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Consistency</span>
+            <span style={fieldVal}>{t.consistency != null ? `${(t.consistency * 100).toFixed(1)}%` : "—"}</span>
+          </div>
+        </div>
+
+        {/* ENTRY */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Entry</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Entry price</span>
+            <span style={fieldVal}>{fmtPrice(t.entry)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Entry time</span>
+            <span style={fieldVal}>
+              {t.entryTime
+                ? new Date(t.entryTime).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) + " PDT"
+                : <span style={{ color: "#555", fontStyle: "italic" }}>—</span>}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Stop</span>
+            <span style={{ ...fieldVal, color: "#cf5b5b" }}>{fmtPrice(t.sl)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Target</span>
+            <span style={{ ...fieldVal, color: "#22b89a" }}>{fmtPrice(t.tp)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>1R distance</span>
+            <span style={fieldVal}>{oneR != null ? fmtPrice(oneR) : "—"}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Risk $</span>
+            <span style={fieldVal}>{t.riskUsd ? fmtUsd(t.riskUsd) : "—"}</span>
+          </div>
+        </div>
+
+        {/* EXIT */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Exit</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Exit price</span>
+            <span style={fieldVal}>{fmtPrice(t.exit)}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Exit time</span>
+            <span style={fieldVal}>
+              {t.ts
+                ? new Date(t.ts).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) + " PDT"
+                : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Reason</span>
+            <span style={fieldVal}>{t.reason || "—"}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Time held</span>
+            <span style={fieldVal}>{heldLabel}</span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>MFE</span>
+            <span style={{ ...fieldVal, color: "#22b89a" }}>
+              {t.mfeR != null ? `+${t.mfeR.toFixed(2)}R` : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>MAE</span>
+            <span style={{ ...fieldVal, color: "#cf5b5b" }}>
+              {t.maeR != null ? `${t.maeR.toFixed(2)}R` : "—"}
+            </span>
+          </div>
+          {t.partialPrice != null && (
+            <div style={fieldRow}>
+              <span style={fieldLabel}>Partial exit</span>
+              <span style={fieldVal}>
+                {t.partialPct != null ? `${(t.partialPct * 100).toFixed(0)}% @ ` : ""}{fmtPrice(t.partialPrice)}
+                {t.partialR != null && <span style={{ color: "#666", marginLeft: 6 }}>(+{t.partialR.toFixed(2)}R)</span>}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* RESULT */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Result</div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Outcome</span>
+            <span style={{ ...fieldVal, color: winning ? "#22b89a" : "#cf5b5b", fontWeight: 700, textTransform: "uppercase" }}>
+              {t.outcome || "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>Final R</span>
+            <span style={{ ...fieldVal, color: winning ? "#22b89a" : "#cf5b5b", fontWeight: 700 }}>
+              {t.r != null ? `${t.r >= 0 ? "+" : ""}${t.r.toFixed(2)}R` : "—"}
+            </span>
+          </div>
+          <div style={fieldRow}>
+            <span style={fieldLabel}>P&L</span>
+            <span style={{ ...fieldVal, color: (pnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b", fontWeight: 700 }}>
+              {pnl != null ? `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}` : "—"}
+            </span>
+          </div>
+          {t.posId && (
+            <div style={fieldRow}>
+              <span style={fieldLabel}>Position ID</span>
+              <span style={{ ...fieldVal, fontSize: mob ? 9 : 11, color: "#666" }}>{t.posId}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── watchlist setup-detail helpers ────────────────────────────── */
 
 // Format a price with appropriate precision based on magnitude
@@ -2362,6 +2826,7 @@ function AccountView({ account, mob }) {
       <ErrorBoundary label="Engine Status"><EngineStatus account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Open Positions"><OpenPositions account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Watchlist"><Watchlist account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Trade History"><TradeHistory account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Scan Activity"><ScanActivity account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Trade Performance"><TradePerformance account={account} mob={mob} /></ErrorBoundary>
     </>

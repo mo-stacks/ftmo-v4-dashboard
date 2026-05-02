@@ -15,7 +15,7 @@
    watchlist row AND the row has candle data. */
 
 import { useEffect, useRef, useState } from "react";
-import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
 
 // Palette aligned with the rest of the dashboard (and with the
 // ICS-V2 investor presentation). See index.css + App.jsx for the
@@ -36,7 +36,18 @@ const CHART_COLORS = {
   impulseStart: "#7eb4fa",  // blue
 };
 
-export default function SetupChart({ entry, height = 280 }) {
+export default function SetupChart({
+  entry,
+  height = 280,
+  // Optional: unix-seconds time to center the visible range on. When set,
+  // the chart pans to a window around this time instead of defaulting to
+  // the most recent bars. Used by TradeDetailPanel to focus on the
+  // entry-to-exit window of a closed trade.
+  focusTime = null,
+  // Optional series markers (entry/exit dots for closed trades).
+  // Each item: { time: unix-seconds, position, color, shape, text }
+  markers = null,
+}) {
   const [tf, setTf] = useState("h4");
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -45,6 +56,7 @@ export default function SetupChart({ entry, height = 280 }) {
   // has the freshest annotation prices without re-creating the chart on
   // every entry change.
   const annotationPricesRef = useRef([]);
+  const markersRef = useRef(null); // primitive returned by createSeriesMarkers
   const [empty, setEmpty] = useState(false);
 
   // Pull candles for the selected timeframe. Defensive against missing/null.
@@ -136,6 +148,10 @@ export default function SetupChart({ entry, height = 280 }) {
 
     return () => {
       ro.disconnect();
+      if (markersRef.current) {
+        try { markersRef.current.detach(); } catch (_) { /* noop */ }
+        markersRef.current = null;
+      }
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -212,19 +228,52 @@ export default function SetupChart({ entry, height = 280 }) {
     ].filter(p => p != null && !isNaN(p));
     series.priceScale().applyOptions({ autoScale: true });
 
-    // Pan to the right so the most recent ~40 bars are visible — that's
-    // where the setup is forming and where annotation lines live. The
-    // user can scroll/pan left to see historical context (all 120 H4 /
-    // 150 M10 bars stay loaded in the series).
-    const visibleBars = tf === "h4" ? 40 : 60;
+    // Series markers (entry/exit dots for closed-trade charts).
+    // Uses lightweight-charts v5 createSeriesMarkers primitive — created
+    // lazily on first non-null markers prop, then setMarkers() to update.
+    if (markers && Array.isArray(markers) && markers.length > 0) {
+      // Lightweight-charts requires markers to be sorted by time ascending.
+      const sortedMarkers = [...markers].sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+      if (!markersRef.current) {
+        markersRef.current = createSeriesMarkers(series, sortedMarkers);
+      } else {
+        markersRef.current.setMarkers(sortedMarkers);
+      }
+    } else if (markersRef.current) {
+      markersRef.current.setMarkers([]);
+    }
+
+    // Pan logic — two modes:
+    //   focusTime mode: center on the given timestamp (used by the
+    //     TradeDetailPanel chart for closed trades — show the entry-to-
+    //     exit window, not the most recent bars)
+    //   default mode: pan right to show the most recent ~40 (H4) or
+    //     ~60 (M10) bars (used for live watchlist + open positions)
     const totalBars = data.length;
     if (totalBars > 0) {
-      chartRef.current.timeScale().setVisibleLogicalRange({
-        from: Math.max(0, totalBars - visibleBars),
-        to: totalBars - 1 + 5, // small right padding so latest bar isn't flush against the price axis
-      });
+      const ts = chartRef.current.timeScale();
+      const halfWindow = tf === "h4" ? 25 : 40;
+      if (focusTime) {
+        // Find the bar index closest to focusTime (or the markers'
+        // earliest time if focusTime falls outside the loaded window)
+        let targetIdx = -1;
+        for (let i = 0; i < data.length; i++) {
+          if (data[i].time >= focusTime) { targetIdx = i; break; }
+        }
+        if (targetIdx === -1) targetIdx = data.length - 1;
+        ts.setVisibleLogicalRange({
+          from: Math.max(0, targetIdx - halfWindow),
+          to: Math.min(totalBars - 1 + 5, targetIdx + halfWindow),
+        });
+      } else {
+        const visibleBars = tf === "h4" ? 40 : 60;
+        ts.setVisibleLogicalRange({
+          from: Math.max(0, totalBars - visibleBars),
+          to: totalBars - 1 + 5, // small right padding
+        });
+      }
     }
-  }, [candles, entry, hasData, tf]);
+  }, [candles, entry, hasData, tf, focusTime, markers]);
 
   const tfBtn = (key, label) => {
     const active = tf === key;

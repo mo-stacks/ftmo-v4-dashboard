@@ -273,6 +273,32 @@ export function useSupabaseData() {
             score: t.quality_score,
             posId: t.position_id || "",
             outcome: classifyOutcome(t),
+            // Extended setup-detail fields surfaced in the TradeHistory
+            // expandable detail panel. All `?? null` for graceful
+            // degradation — the engine writes these to JSONL but the
+            // supabase trade_history columns may not be populated yet.
+            // See SESSION_HANDOFF_trade_history.md.
+            entryTime:    t.entry_time     ?? null,
+            scanTime:     t.scan_time      ?? null,
+            barsHeld:     t.bars_held      ?? null,
+            mfeR:         t.mfe_r          ?? null,
+            maeR:         t.mae_r          ?? null,
+            // Setup characteristics (the same fields the watchlist uses)
+            impulseStartPrice: t.impulse_start_price ?? null,
+            impulseEndPrice:   t.impulse_end_price   ?? null,
+            impulseLeg:        t.impulse_leg         ?? null,
+            atrMultiple:       t.atr_multiple        ?? null,
+            consistency:       t.consistency         ?? null,
+            pullbackDepth:     t.pullback_depth      ?? null,
+            fib786:            t.fib_786             ?? null,
+            // Per-trade candles for the chart in TradeDetailPanel.
+            // Same shape as watchlist/positions: { h4: [...], m10: [...] }
+            candles:           t.candles             ?? null,
+            // Partial-exit info (engine logs partial fills as separate
+            // events; field is null when the trade had no partial)
+            partialPrice:      t.partial_price       ?? null,
+            partialPct:        t.partial_pct         ?? null,
+            partialR:          t.partial_r           ?? null,
           }));
 
         const wins = variantTrades.filter(t => t.outcome === "win").length;
