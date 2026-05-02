@@ -868,9 +868,18 @@ function OpenPositions({ account, mob }) {
                   else next.add(rowKey);
                   setExpanded(next);
                 };
-                // Trail detection: stop has moved if live differs from original
-                const trailEngaged = p.originalStopLoss != null && p.stopLoss != null
-                  && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9;
+                // Trail detection: trust the engine's MGMT_STATE_TRANSITION
+                // event as the source of truth, not numeric SL comparison.
+                // Brokers adjust SL/TP at order placement (cTrader
+                // stop-level enforcement) by 1-2 pips — that is NOT a
+                // trail/BE move. The publisher derives stopAmendedAfterOpen
+                // from event log; only that flag should light up the badge.
+                // Fall through `?? false` for backward compat with old rows
+                // (still numeric for those — Supabase rows refresh in 60s).
+                const trailEngaged = p.stopAmendedAfterOpen ?? (
+                  p.originalStopLoss != null && p.stopLoss != null
+                  && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9
+                );
                 return (
                 <Fragment key={rowKey}>
                 <tr
@@ -975,11 +984,21 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
   const riskUsd = balance * riskPct;
 
   // Stop/target movement deltas (vs originals) — only meaningful when
-  // engine has populated originalStopLoss / originalTakeProfit
-  const stopMoved = p.originalStopLoss != null && p.stopLoss != null
-    && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9;
-  const targetMoved = p.originalTakeProfit != null && p.takeProfit != null
-    && Math.abs(p.originalTakeProfit - p.takeProfit) > 1e-9;
+  // engine has populated originalStopLoss / originalTakeProfit.
+  // Source of truth: stopAmendedAfterOpen / targetAmendedAfterOpen flags
+  // from the publisher (derived from MGMT_STATE_TRANSITION events).
+  // Numeric comparison of original vs live can produce false positives
+  // due to cTrader adjusting SL/TP at order placement (~1-2 pips drift)
+  // even when the engine never amended. Trust the flags. Fall through
+  // to numeric for old Supabase rows that don't yet carry the flags.
+  const stopMoved = p.stopAmendedAfterOpen ?? (
+    p.originalStopLoss != null && p.stopLoss != null
+    && Math.abs(p.originalStopLoss - p.stopLoss) > 1e-9
+  );
+  const targetMoved = p.targetAmendedAfterOpen ?? (
+    p.originalTakeProfit != null && p.takeProfit != null
+    && Math.abs(p.originalTakeProfit - p.takeProfit) > 1e-9
+  );
 
   // Section style — same as WatchlistDetailPanel for visual consistency
   const sectionTitle = {
