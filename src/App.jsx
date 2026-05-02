@@ -9,6 +9,7 @@ import {
   CartesianGrid, BarChart, Bar, Cell, ReferenceLine, ComposedChart, Line, LineChart, Legend,
 } from "recharts";
 import { useSupabaseData } from "./useSupabaseData.js";
+import { supabase } from "./supabaseClient.js";
 import { VARIANT_CHANGE_EVENTS, attachChangeEvents } from "./changeEvents.js";
 
 /* ── error boundary ──────────────────────────────────────────────
@@ -1425,6 +1426,38 @@ function fmtTradeWhen(iso) {
 function TradeDetailPanel({ trade, account, mob }) {
   const t = trade;
 
+  // Lazy candle fetch — the bulk trade_history query intentionally omits
+  // the `candles` JSONB to keep egress under control (~30 KB × 500 rows
+  // = 15 MB saved per refresh × every browser tab × every 2 min). When
+  // the user expands a row, fetch the candles for just this trade.
+  // The result is cached in component state, so re-collapsing and re-
+  // expanding the same row doesn't re-fetch.
+  const [candles, setCandles] = useState(t.candles ?? null);
+  const [candlesLoading, setCandlesLoading] = useState(false);
+  useEffect(() => {
+    if (!t.id) return;
+    if (candles !== null) return; // already have them
+    let cancelled = false;
+    setCandlesLoading(true);
+    supabase
+      .from("trade_history")
+      .select("candles")
+      .eq("id", t.id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn(`Failed to fetch candles for trade ${t.id}:`, error.message);
+          setCandles({}); // sentinel — chart shows "no candle data" empty state
+        } else {
+          setCandles(data?.candles ?? {});
+        }
+      })
+      .finally(() => { if (!cancelled) setCandlesLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t.id]);
+
   // Direction normalization — engine writes "bullish"/"bearish" in newer
   // rows but older history may carry "BUY"/"SELL".
   const dirNormal = t.dir === "bullish" || t.dir === "BUY" ? "bullish" : "bearish";
@@ -1464,9 +1497,11 @@ function TradeDetailPanel({ trade, account, mob }) {
 
   // Map trade to the chart's expected `entry` shape. Reuses watchlist
   // semantics: the field names match what SetupChart already reads.
+  // candles come from the lazy-loaded state (above) rather than the
+  // bulk-fetched trade row.
   const chartEntry = {
     symbol: t.sym,
-    candles: t.candles,
+    candles: candles,                  // from lazy-load useEffect
     direction: dirNormal,
     impulseStartPrice: t.impulseStartPrice,
     impulseEndPrice:   t.impulseEndPrice,
@@ -1524,7 +1559,9 @@ function TradeDetailPanel({ trade, account, mob }) {
       borderTop: "1px solid #1a1a26",
       borderBottom: "1px solid #1a1a26",
     }}>
-      {/* Chart — focus on entry, mark entry + exit */}
+      {/* Chart — focus on entry, mark entry + exit. Candles are lazy-
+          loaded above; show a tiny "fetching candles" hint while the
+          on-demand request is in flight. */}
       <div style={{ marginBottom: mob ? 10 : 12 }}>
         <Suspense fallback={
           <div style={{
@@ -1539,6 +1576,12 @@ function TradeDetailPanel({ trade, account, mob }) {
             markers={markers}
           />
         </Suspense>
+        {candlesLoading && (
+          <div style={{
+            marginTop: 4, fontSize: 10, color: "#555", textAlign: "right",
+            fontStyle: "italic",
+          }}>fetching candles…</div>
+        )}
       </div>
 
       <div style={grid}>

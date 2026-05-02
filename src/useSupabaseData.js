@@ -1,8 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
-const REFRESH_INTERVAL = 60 * 1000; // 1 minute
+// 2026-05-02: raised 60s → 120s as part of the egress reduction pass.
+// The engine's downstream cadence (M10 scans, FTMO daily DD reset, etc.)
+// is well-aligned with 2-minute polls; users won't notice the slower
+// refresh and we cut Supabase egress in half.
+const REFRESH_INTERVAL = 120 * 1000;
+
+// Balance-snapshot lookback. Was 90 days, dropped to 30 days to shrink
+// the first-load payload (most recent activity is what users care about;
+// 30 days still covers the rolling-month performance views).
+const SNAPSHOT_WINDOW_DAYS = 30;
+
 const STARTING_BALANCE = 100000;
+
+// Explicit column list for trade_history fetches. Excludes the `candles`
+// JSONB so the bulk fetch doesn't pull ~30 KB of OHLC per row × 500 rows
+// every refresh. Candles are fetched on-demand by TradeDetailPanel when
+// a row is expanded.
+const TRADE_HISTORY_COLS = [
+  // Identity
+  "id", "variant", "position_id", "symbol", "direction", "setup_type",
+  // Prices
+  "entry_price", "exit_price", "stop_price", "target_price",
+  // Times
+  "entry_time", "exit_time", "scan_time",
+  // Result
+  "exit_reason", "volume_lots", "risk_usd", "realized_pnl", "r_multiple",
+  "quality_score", "hold_time_hours",
+  "trailing_was_active", "partial_hit", "source", "created_at",
+  // Extended setup-detail (added 2026-05-02 migration)
+  "bars_held", "mfe_r", "mae_r",
+  "impulse_start_price", "impulse_end_price", "impulse_leg",
+  "atr_multiple", "consistency", "pullback_depth", "fib_786",
+  "partial_price", "partial_pct", "partial_r",
+  // NOTE: `candles` deliberately omitted — fetched on-demand
+].join(",");
 
 const VARIANT_META = {
   production: { label: "Production", fullLabel: "FTMO_PROD — half-fib stop, no trail",       color: "#22b89a", displayId: "17102428", accountId: "47151641" },
@@ -199,51 +232,125 @@ export function useSupabaseData() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
 
+  // ─── Delta-refresh caches (2026-05-02 egress reduction) ────────────
+  // After the first full fetch we keep snapshots and trades in refs and
+  // only ask Supabase for rows newer than the last seen `timestamp` /
+  // `created_at`. This drops per-refresh egress by ~95% (a typical
+  // 60-second tick now ships ~10 new snapshot rows × 6 variants instead
+  // of refetching the full ~60k-row 90-day window).
+  //
+  // The caches survive component re-renders but reset on full page
+  // reload — that's intentional, the first fetch then re-establishes
+  // the baseline.
+  const snapshotsCacheRef = useRef([]);
+  const lastSnapshotTsRef = useRef(null);
+  const tradesCacheRef = useRef([]);
+  const lastTradeCreatedRef = useRef(null);
+
   const fetchData = useCallback(async () => {
     try {
-      // Fetch account state + trades in parallel; balance_snapshots is paginated separately.
+      // Account state is small (6 rows) and changes constantly, so
+      // refetch it in full each tick. Trade and snapshot fetches are
+      // delta-aware below.
+      const isFirstLoad = lastSnapshotTsRef.current === null;
+      const tradesQuery = isFirstLoad
+        ? supabase
+            .from('trade_history')
+            .select(TRADE_HISTORY_COLS)
+            .order('exit_time', { ascending: false })
+            .limit(500)
+        : supabase
+            .from('trade_history')
+            .select(TRADE_HISTORY_COLS)
+            .gt('created_at', lastTradeCreatedRef.current)
+            .order('exit_time', { ascending: false });
+
       const [stateRes, tradeRes] = await Promise.all([
         supabase.from('account_state').select('*'),
-        supabase.from('trade_history').select('*').order('exit_time', { ascending: false }).limit(500),
+        tradesQuery,
       ]);
 
       if (stateRes.error) throw stateRes.error;
       if (tradeRes.error) throw tradeRes.error;
 
-      // balance_snapshots: Supabase REST default caps rows at 1000. Before this
-      // fix the fetch was unbounded + ordered ascending, which silently kept the
-      // OLDEST 1000 rows globally and cut off the equity curve at ~Apr 13.
-      // Fix: 90-day time window + descending-paged .range() loop + client-side
-      // reverse so downstream (App.jsx balanceCurve builder at lines 74-87)
-      // continues to receive chronologically-ascending rows.
+      // Merge delta trades into the cache (newest first across the union).
+      // Dedupe by id in case a row is updated and re-emitted by the
+      // publisher within a single tick.
+      if (isFirstLoad) {
+        tradesCacheRef.current = tradeRes.data || [];
+      } else if ((tradeRes.data || []).length > 0) {
+        const seen = new Set(tradeRes.data.map(t => t.id));
+        tradesCacheRef.current = [
+          ...tradeRes.data,
+          ...tradesCacheRef.current.filter(t => !seen.has(t.id)),
+        ].slice(0, 500); // keep the working set bounded
+      }
+      // Track the freshest created_at we've persisted
+      if (tradesCacheRef.current.length > 0) {
+        const newest = tradesCacheRef.current.reduce((a, b) =>
+          (a.created_at || "") > (b.created_at || "") ? a : b
+        );
+        lastTradeCreatedRef.current = newest.created_at;
+      }
+      const tradeData = tradesCacheRef.current;
+
+      // ─── balance_snapshots ────────────────────────────────────────
+      // First load: paginated descending-by-timestamp pull of the
+      // 30-day window (was 90; trimmed to halve the first-load payload).
+      // Subsequent ticks: only rows with `timestamp > lastSnapshotTs`,
+      // appended to the cache. As time passes, prune rows that fall
+      // outside the rolling 30-day window so memory stays bounded.
       const PAGE_SIZE = 1000;
-      // 2026-04-30: raised 50k → 100k to cover 6 variants × 90d × ~2min cadence
-      // (theoretical 388k cap; observed ~57-66k after dropped-row filtering).
-      // Truncation hit "OLDEST 16k get dropped" in the 50k regime because the
-      // pagination is ORDER BY timestamp DESC (newest-first), so reaching the
-      // cap drops the oldest pages. After A (server-side hourly aggregation)
-      // lands, this cap drops back to ~12k and the safety margin is huge.
-      const MAX_ROWS = 100000;
-      const cutoffIso = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      const snapsAccum = [];
-      for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
-        const end = Math.min(offset + PAGE_SIZE - 1, MAX_ROWS - 1);
-        const pageRes = await supabase
+      const cutoffIso = new Date(Date.now() - SNAPSHOT_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+      if (isFirstLoad) {
+        const snapsAccum = [];
+        // Cap first-load pull at 30 days × 6 variants × 2-min cadence
+        // ≈ 130k rows. We're nowhere near this in practice (~20k for
+        // 30 days observed) but the cap keeps a future cadence change
+        // from blowing up the browser.
+        const MAX_ROWS = 50000;
+        for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
+          const end = Math.min(offset + PAGE_SIZE - 1, MAX_ROWS - 1);
+          const pageRes = await supabase
+            .from('balance_snapshots')
+            .select('*')
+            .gte('timestamp', cutoffIso)
+            .order('timestamp', { ascending: false })
+            .range(offset, end);
+          if (pageRes.error) throw pageRes.error;
+          const page = pageRes.data || [];
+          snapsAccum.push(...page);
+          if (page.length < PAGE_SIZE) break;
+        }
+        if (snapsAccum.length >= MAX_ROWS) {
+          console.warn(`balance_snapshots: hit MAX_ROWS first-load cap (${MAX_ROWS}).`);
+        }
+        snapsAccum.reverse(); // newest-first → oldest-first
+        snapshotsCacheRef.current = snapsAccum;
+      } else {
+        const deltaRes = await supabase
           .from('balance_snapshots')
           .select('*')
-          .gte('timestamp', cutoffIso)
-          .order('timestamp', { ascending: false })
-          .range(offset, end);
-        if (pageRes.error) throw pageRes.error;
-        const page = pageRes.data || [];
-        snapsAccum.push(...page);
-        if (page.length < PAGE_SIZE) break;
+          .gt('timestamp', lastSnapshotTsRef.current)
+          .order('timestamp', { ascending: true });
+        if (deltaRes.error) throw deltaRes.error;
+        const newRows = deltaRes.data || [];
+        if (newRows.length > 0) {
+          snapshotsCacheRef.current = [...snapshotsCacheRef.current, ...newRows];
+        }
+        // Prune the window — drop snapshots that have aged out
+        snapshotsCacheRef.current = snapshotsCacheRef.current.filter(
+          s => (s.timestamp || "") >= cutoffIso
+        );
       }
-      if (snapsAccum.length >= MAX_ROWS) {
-        console.warn(`balance_snapshots: hit MAX_ROWS safety cap (${MAX_ROWS}); oldest rows within the 90-day window may be truncated.`);
+      if (snapshotsCacheRef.current.length > 0) {
+        lastSnapshotTsRef.current = snapshotsCacheRef.current[snapshotsCacheRef.current.length - 1].timestamp;
       }
-      snapsAccum.reverse(); // newest-first → oldest-first (ascending) for charting
-      const snapRes = { data: snapsAccum, error: null };
+      const snapRes = { data: snapshotsCacheRef.current, error: null };
+
+      // Use the merged trade cache below (originally `tradeRes.data`)
+      tradeRes.data = tradeData;
 
       const accountData = {};
       for (const key of ACCOUNT_KEYS) {
@@ -256,6 +363,7 @@ export function useSupabaseData() {
           .sort((a, b) => (a.exit_time || "").localeCompare(b.exit_time || ""))
           .map((t, i) => ({
             tn: i + 1,
+            id: t.id,                 // PK — used by TradeDetailPanel for lazy candle fetch
             ts: t.exit_time,
             d: t.exit_time ? t.exit_time.substring(0, 10) : "",
             sym: t.symbol,
@@ -291,9 +399,12 @@ export function useSupabaseData() {
             consistency:       t.consistency         ?? null,
             pullbackDepth:     t.pullback_depth      ?? null,
             fib786:            t.fib_786             ?? null,
-            // Per-trade candles for the chart in TradeDetailPanel.
-            // Same shape as watchlist/positions: { h4: [...], m10: [...] }
-            candles:           t.candles             ?? null,
+            // Per-trade candles intentionally NOT included in the bulk
+            // fetch — they are 30+ KB JSONB per row and would balloon
+            // the trade_history list payload to ~15 MB. TradeDetailPanel
+            // fetches candles on-demand for the single expanded row via
+            // a separate `select('candles').eq('id', X)` call.
+            candles:           null,
             // Partial-exit info (engine logs partial fills as separate
             // events; field is null when the trade had no partial)
             partialPrice:      t.partial_price       ?? null,
