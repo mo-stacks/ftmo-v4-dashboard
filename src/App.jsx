@@ -34,14 +34,14 @@ class ErrorBoundary extends Component {
       return (
         <div style={{
           background: "#2a1a1a",
-          border: "1px solid #f87171",
+          border: "1px solid #cf5b5b",
           borderRadius: 10,
           padding: 16,
           margin: "12px 0",
           color: "#fca5a5",
           fontSize: 13,
         }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, color: "#f87171" }}>
+          <div style={{ fontWeight: 600, marginBottom: 6, color: "#cf5b5b" }}>
             ⚠ {this.props.label || "Section"} failed to render
           </div>
           <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
@@ -146,7 +146,7 @@ const Tip = ({ active, payload }) => {
   const d = payload[0].payload;
   const isPartial = d.type === "PARTIAL";
   return (
-    <div style={{ background: "#1a1a2e", border: "1px solid #444", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#e0e0e0", maxWidth: 260 }}>
+    <div style={{ background: "#13131c", border: "1px solid #444", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#e0e0ea", maxWidth: 260 }}>
       {/* Snapshot point (from cTrader balance history) */}
       {d.idx !== undefined && d.bal !== undefined && d.eq !== undefined && d.tn === undefined && (
         <div style={{ fontWeight: 600, marginBottom: 4 }}>{fmtSnapshotTime(d.ts)}</div>
@@ -160,29 +160,29 @@ const Tip = ({ active, payload }) => {
               fontSize: 10,
               padding: "1px 6px",
               borderRadius: 3,
-              background: isPartial ? "#facc1522" : "#60a5fa22",
-              color: isPartial ? "#facc15" : "#60a5fa",
+              background: isPartial ? "#cfb95b22" : "#7eb4fa22",
+              color: isPartial ? "#cfb95b" : "#7eb4fa",
             }}>{d.type}</span>
           )}
         </div>
       )}
       {d.month && <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.month}</div>}
-      {d.bal !== undefined && <div>Balance: <span style={{ color: "#4ade80" }}>${d.bal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
-      {d.eq !== undefined && d.eq !== d.bal && <div>Equity: <span style={{ color: "#60a5fa" }}>${d.eq.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
-      {d.pnl !== undefined && d.tn === undefined && <div>P&L vs $100k: <span style={{ color: d.pnl >= 0 ? "#4ade80" : "#f87171" }}>{d.pnl >= 0 ? "+" : ""}${d.pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
+      {d.bal !== undefined && <div>Balance: <span style={{ color: "#22b89a" }}>${d.bal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
+      {d.eq !== undefined && d.eq !== d.bal && <div>Equity: <span style={{ color: "#7eb4fa" }}>${d.eq.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
+      {d.pnl !== undefined && d.tn === undefined && <div>P&L vs $100k: <span style={{ color: d.pnl >= 0 ? "#22b89a" : "#cf5b5b" }}>{d.pnl >= 0 ? "+" : ""}${d.pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
       {d.enginePnl !== undefined && <div style={{ color: "#888", fontSize: 11 }}>Engine claimed: {d.enginePnl >= 0 ? "+" : ""}${d.enginePnl.toFixed(2)}</div>}
       {d.sym && <div>{d.sym}{d.mode ? ` ${d.mode}` : ""} — {d.r > 0 ? "+" : ""}{d.r}R</div>}
       {d.reason && <div style={{ color: "#888", fontSize: 11 }}>Exit: {d.reason}</div>}
       {d.trades && <div>{d.trades} events | {d.wr}% WR</div>}
-      {d.monthPnl !== undefined && <div>Month P&L: <span style={{ color: d.monthPnl >= 0 ? "#4ade80" : "#f87171" }}>${d.monthPnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
+      {d.monthPnl !== undefined && <div>Month P&L: <span style={{ color: d.monthPnl >= 0 ? "#22b89a" : "#cf5b5b" }}>${d.monthPnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
     </div>
   );
 };
 
 /* ── stat card ───────────────────────────────────────────────── */
 
-const Card = ({ label, value, sub, color = "#4ade80" }) => (
-  <div style={{ background: "#1a1a2e", borderRadius: 10, padding: "14px 16px", border: "1px solid #2a2a3e", minWidth: 0, overflow: "hidden" }}>
+const Card = ({ label, value, sub, color = "#22b89a" }) => (
+  <div style={{ background: "#13131c", borderRadius: 10, padding: "14px 16px", border: "1px solid #22222e", minWidth: 0, overflow: "hidden" }}>
     <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
     <div style={{ fontSize: 22, fontWeight: 700, color, marginTop: 3, wordBreak: "break-word", lineHeight: 1.15 }}>{value}</div>
     {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 2, wordBreak: "break-word" }}>{sub}</div>}
@@ -192,7 +192,7 @@ const Card = ({ label, value, sub, color = "#4ade80" }) => (
 /* ── section header ──────────────────────────────────────────── */
 
 const SectionHeader = ({ children }) => (
-  <h2 style={{ fontSize: 16, fontWeight: 700, margin: "24px 0 12px", color: "#fff", borderBottom: "1px solid #2a2a3e", paddingBottom: 8 }}>
+  <h2 style={{ fontSize: 16, fontWeight: 700, margin: "24px 0 12px", color: "#fff", borderBottom: "1px solid #22222e", paddingBottom: 8 }}>
     {children}
   </h2>
 );
@@ -201,8 +201,8 @@ const SectionHeader = ({ children }) => (
 
 const StatusPill = ({ status }) => {
   const map = {
-    ACTIVE:  { bg: "#4ade8022", fg: "#4ade80", border: "#4ade8044" },
-    PAUSED:  { bg: "#f8717122", fg: "#f87171", border: "#f8717144" },
+    ACTIVE:  { bg: "#22b89a22", fg: "#22b89a", border: "#22b89a44" },
+    PAUSED:  { bg: "#cf5b5b22", fg: "#cf5b5b", border: "#cf5b5b44" },
     OFFLINE: { bg: "#88888822", fg: "#888888", border: "#88888844" },
   };
   const s = map[status] || map.OFFLINE;
@@ -233,7 +233,7 @@ function TabBar({ activeTab, onChange, mob, ACCOUNTS, ACCOUNT_KEYS }) {
   return (
     <div style={{
       display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap",
-      borderBottom: "1px solid #2a2a3e", paddingBottom: 12,
+      borderBottom: "1px solid #22222e", paddingBottom: 12,
     }}>
       {tabs.map(t => {
         const isActive = activeTab === t.key;
@@ -244,8 +244,8 @@ function TabBar({ activeTab, onChange, mob, ACCOUNTS, ACCOUNT_KEYS }) {
             style={{
               padding: mob ? "7px 12px" : "8px 16px",
               borderRadius: 8,
-              border: isActive ? `1px solid ${t.color}66` : "1px solid #2a2a3e",
-              background: isActive ? `${t.color}22` : "#1a1a2e",
+              border: isActive ? `1px solid ${t.color}66` : "1px solid #22222e",
+              background: isActive ? `${t.color}22` : "#13131c",
               color: isActive ? t.color : "#888",
               fontSize: mob ? 12 : 13,
               fontWeight: 600,
@@ -393,20 +393,20 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
 
       {/* Summary cards */}
       <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 20 }}>
-        <Card label="Active Accounts" value={`${totals.activeCount} / ${accounts.length}`} sub="Engines running" color="#4ade80" />
+        <Card label="Active Accounts" value={`${totals.activeCount} / ${accounts.length}`} sub="Engines running" color="#22b89a" />
         <Card
           label="Total Equity"
           value={`$${totals.totalEquity.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
           sub={`Across ${accounts.length} accounts`}
-          color="#60a5fa"
+          color="#7eb4fa"
         />
         <Card
           label="Total Closes"
           value={totals.totalTrades}
           sub={`Realized: ${totals.totalRealized >= 0 ? "+" : ""}$${totals.totalRealized.toFixed(2)}`}
-          color="#c084fc"
+          color="#a78bfa"
         />
-        <Card label="Watchlist" value={totals.totalWatchlist} sub="Active setups" color="#facc15" />
+        <Card label="Watchlist" value={totals.totalWatchlist} sub="Active setups" color="#cfb95b" />
         <Card
           label="Next H4 Scan"
           value={(() => {
@@ -419,19 +419,19 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
             const nextScan = getNextH4Scan(prodState?.nextH4Scan);
             return nextScan.toLocaleString("en-US", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false }) + " UTC";
           })()}
-          color="#38bdf8"
+          color="#22d3ee"
         />
         <Card
           label="Best / Worst"
           value={bestVariant}
           sub={worstVariant !== "—" ? `Worst: ${worstVariant}` : "Need more data"}
-          color="#4ade80"
+          color="#22b89a"
         />
       </div>
 
       {/* Per-account performance table */}
       <SectionHeader>Account Performance</SectionHeader>
-      <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginBottom: 14 }}>
+      <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -460,7 +460,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     key={a.key}
                     onClick={() => onSelectAccount(a.key)}
                     style={{
-                      borderBottom: "1px solid #1f1f2f",
+                      borderBottom: "1px solid #1a1a26",
                       cursor: "pointer",
                       transition: "background 0.15s",
                     }}
@@ -479,28 +479,28 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     <td style={{ padding: "10px 12px" }}>
                       <StatusPill status={a.status} />
                     </td>
-                    <td style={{ padding: "10px 12px", color: "#e0e0e0", fontFamily: "monospace" }}>
+                    <td style={{ padding: "10px 12px", color: "#e0e0ea", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
                       ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </td>
-                    <td style={{ padding: "10px 12px", color: equity >= balance ? "#4ade80" : "#f87171", fontFamily: "monospace" }}>
+                    <td style={{ padding: "10px 12px", color: equity >= balance ? "#22b89a" : "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
                       ${equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </td>
-                    <td style={{ padding: "10px 12px", color: openPnl >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace" }}>
+                    <td style={{ padding: "10px 12px", color: openPnl >= 0 ? "#22b89a" : "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
                       {openPnl >= 0 ? "+" : ""}${openPnl.toFixed(2)}
                     </td>
-                    <td style={{ padding: "10px 12px", color: realized >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace", fontWeight: 600 }}>
+                    <td style={{ padding: "10px 12px", color: realized >= 0 ? "#22b89a" : "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600 }}>
                       {realized >= 0 ? "+" : ""}${realized.toFixed(2)}
                     </td>
-                    <td style={{ padding: "10px 12px", color: dayPnl == null ? "#555" : dayPnl >= 0 ? "#4ade80" : "#f87171", fontFamily: "monospace" }}>
+                    <td style={{ padding: "10px 12px", color: dayPnl == null ? "#555" : dayPnl >= 0 ? "#22b89a" : "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
                       {dayPnl == null ? "—" : `${dayPnl >= 0 ? "+" : ""}$${dayPnl.toFixed(2)}`}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {a.meta.totalTrades}
                       {a.meta.partialCount > 0 && (
-                        <span style={{ fontSize: 10, color: "#facc15", marginLeft: 4 }}>+{a.meta.partialCount}p</span>
+                        <span style={{ fontSize: 10, color: "#cfb95b", marginLeft: 4 }}>+{a.meta.partialCount}p</span>
                       )}
                     </td>
-                    <td style={{ padding: "10px 12px", color: a.meta.maxDD < 5 ? "#4ade80" : a.meta.maxDD < 10 ? "#facc15" : "#f87171" }}>
+                    <td style={{ padding: "10px 12px", color: a.meta.maxDD < 5 ? "#22b89a" : a.meta.maxDD < 10 ? "#cfb95b" : "#cf5b5b" }}>
                       {a.meta.maxDD > 0 ? `${a.meta.maxDD}%` : "—"}
                     </td>
                   </tr>
@@ -509,7 +509,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "8px 12px", borderTop: "1px solid #1f1f2f", fontSize: 11, color: "#555", textAlign: "center" }}>
+        <div style={{ padding: "8px 12px", borderTop: "1px solid #1a1a26", fontSize: 11, color: "#555", textAlign: "center" }}>
           Click any row to view that account's full dashboard ·
           All $ figures sourced directly from cTrader balance/equity (authoritative)
         </div>
@@ -521,7 +521,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
           per-variant differences: Account / Q-gate / Partial / BE / Risk /
           Stop / Trail / Universe. */}
       <SectionHeader>Variant Configuration</SectionHeader>
-      <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginBottom: 14 }}>
+      <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -552,16 +552,16 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                 // Trail-active variants get a yellow "C5" badge so the contrast
                 // with off variants is obvious at a glance.
                 const trailIsOff = (c.trail || "").toLowerCase().startsWith("off");
-                const trailColor = trailIsOff ? "#888" : "#facc15";
+                const trailColor = trailIsOff ? "#888" : "#cfb95b";
                 // Account type + target: Challenge gets a tinted badge so it
                 // stands out against the demo rows. Production = FTMO Free
                 // Demo (also tinted, lighter) since it's the V2/Plan-A/B/C
                 // reference. Spotware demos are neutral.
                 const isChallenge = c.account_type?.includes("Challenge");
                 const isProduction = c.account_type?.includes("FTMO Free");
-                const acctColor = isChallenge ? "#fb923c" : isProduction ? "#4ade80" : "#888";
+                const acctColor = isChallenge ? "#cf8f5b" : isProduction ? "#22b89a" : "#888";
                 return (
-                  <tr key={a.key} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                  <tr key={a.key} style={{ borderBottom: "1px solid #1a1a26" }}>
                     <td style={{ padding: "10px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: a.color, display: "inline-block" }} />
@@ -574,15 +574,15 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                         <div style={{ color: "#888", marginTop: 2 }}>Target = {c.target_pct}%</div>
                       )}
                     </td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{c.quality_gate ?? "—"}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace" }}>{partialStr}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "#aaa" }}>{c.be_move ?? "—"}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#4ade80" }}
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>{c.quality_gate ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>{partialStr}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 11, color: "#aaa" }}>{c.be_move ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", color: "#22b89a" }}
                         title="Phase 1 fleet-wide RISK_PCT (engine constant)">
                       {riskStr}
                     </td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#60a5fa" }}>{c.stop_mode ?? "—"}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", color: trailColor }}>{c.trail ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", color: "#7eb4fa" }}>{c.stop_mode ?? "—"}</td>
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", color: trailColor }}>{c.trail ?? "—"}</td>
                     <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11 }}>{c.universe_filter ?? "—"}</td>
                   </tr>
                 );
@@ -590,7 +590,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "8px 12px", borderTop: "1px solid #1f1f2f", fontSize: 11, color: "#555", textAlign: "center" }}>
+        <div style={{ padding: "8px 12px", borderTop: "1px solid #1a1a26", fontSize: 11, color: "#555", textAlign: "center" }}>
           Structured fields only · full per-variant deploy state and rationale lives in
           {" "}<code style={{ color: "#aaa" }}>docs/variant_state.md</code>{" "}
           (refresh on every Rule-2 deploy)
@@ -617,7 +617,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: 500,
-                  background: chartMode === v ? "#4ade80" : "#1a1a2e",
+                  background: chartMode === v ? "#22b89a" : "#13131c",
                   color: chartMode === v ? "#000" : "#888",
                 }}
               >
@@ -625,7 +625,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
               </button>
             ))}
           </div>
-          <div style={{ background: "#1a1a2e", borderRadius: 12, border: "1px solid #2a2a3e", padding: "16px 12px 6px", marginBottom: 14 }}>
+          <div style={{ background: "#13131c", borderRadius: 12, border: "1px solid #22222e", padding: "16px 12px 6px", marginBottom: 14 }}>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={equityCompare}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
@@ -641,7 +641,7 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     if (!active || !payload?.length) return null;
                     const row = equityCompare[label];
                     return (
-                      <div style={{ background: "#1a1a2e", border: "1px solid #444", borderRadius: 8, padding: "10px 14px", fontSize: 12 }}>
+                      <div style={{ background: "#13131c", border: "1px solid #444", borderRadius: 8, padding: "10px 14px", fontSize: 12 }}>
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>{row?.label || `Point ${label}`}</div>
                         {payload.map(p => (
                           <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
@@ -710,7 +710,7 @@ function EngineStatus({ account, mob }) {
     return (
       <>
         <SectionHeader>Engine Status</SectionHeader>
-        <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 20, border: "1px solid #2a2a3e", textAlign: "center", color: "#666", fontSize: 13 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, padding: 20, border: "1px solid #22222e", textAlign: "center", color: "#666", fontSize: 13 }}>
           No engine state available for {account?.label || "this account"}
         </div>
       </>
@@ -730,10 +730,10 @@ function EngineStatus({ account, mob }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <span style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          background: s.tradingPaused ? "#f8717122" : "#4ade8022",
-          color: s.tradingPaused ? "#f87171" : "#4ade80",
+          background: s.tradingPaused ? "#cf5b5b22" : "#22b89a22",
+          color: s.tradingPaused ? "#cf5b5b" : "#22b89a",
           padding: "4px 12px", borderRadius: 6, fontSize: 13, fontWeight: 600,
-          border: `1px solid ${s.tradingPaused ? "#f8717144" : "#4ade8044"}`,
+          border: `1px solid ${s.tradingPaused ? "#cf5b5b44" : "#22b89a44"}`,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
           {s.tradingPaused ? "TRADING PAUSED" : "ACTIVE"}
@@ -750,10 +750,10 @@ function EngineStatus({ account, mob }) {
       {(() => {
         const nextH4 = getNextH4Scan(s.nextH4Scan);
         return (
-          <div style={{ background: "#1a1a2e", borderRadius: 8, padding: "10px 14px", border: "1px solid #2a2a3e", marginBottom: 14, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ background: "#13131c", borderRadius: 8, padding: "10px 14px", border: "1px solid #22222e", marginBottom: 14, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Next H4 Scan:</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#60a5fa" }}>{fmtScanTime(nextH4)}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#7eb4fa" }}>{fmtScanTime(nextH4)}</span>
             </div>
             <div style={{ width: 1, height: 16, background: "#333" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -773,34 +773,34 @@ function EngineStatus({ account, mob }) {
 
       {/* Engine stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(170px,1fr))", gap: 10, marginBottom: 14 }}>
-        <Card label="Balance" value={`$${s.balance.toLocaleString()}`} sub={`Day start: $${s.dayStartBalance.toLocaleString()}`} color="#60a5fa" />
-        <Card label="Equity" value={`$${s.equity.toLocaleString()}`} sub={`P&L: $${(s.equity - s.dayStartBalance).toFixed(2)}`} color={s.equity >= s.dayStartBalance ? "#4ade80" : "#f87171"} />
-        <Card label="Activity" value={`${s.h4Scans} / ${s.m10Scans}`} sub={`H4 scans / M10 scans`} color="#60a5fa" />
-        <Card label="Trades Placed" value={s.tradesPlaced} sub="Since engine start" color="#c084fc" />
+        <Card label="Balance" value={`$${s.balance.toLocaleString()}`} sub={`Day start: $${s.dayStartBalance.toLocaleString()}`} color="#7eb4fa" />
+        <Card label="Equity" value={`$${s.equity.toLocaleString()}`} sub={`P&L: $${(s.equity - s.dayStartBalance).toFixed(2)}`} color={s.equity >= s.dayStartBalance ? "#22b89a" : "#cf5b5b"} />
+        <Card label="Activity" value={`${s.h4Scans} / ${s.m10Scans}`} sub={`H4 scans / M10 scans`} color="#7eb4fa" />
+        <Card label="Trades Placed" value={s.tradesPlaced} sub="Since engine start" color="#a78bfa" />
       </div>
 
       {/* Prop firm drawdown bars */}
-      <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 16, border: "1px solid #2a2a3e" }}>
+      <div style={{ background: "#13131c", borderRadius: 10, padding: 16, border: "1px solid #22222e" }}>
         <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 12px", color: "#ccc" }}>Drawdown Limits</h3>
         <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: 16 }}>
           {/* Daily DD */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
               <span style={{ color: "#888" }}>Daily Loss</span>
-              <span style={{ color: parseFloat(dailyDdPct) > 80 ? "#f87171" : "#4ade80" }}>
+              <span style={{ color: parseFloat(dailyDdPct) > 80 ? "#cf5b5b" : "#22b89a" }}>
                 ${s.dailyLoss.toFixed(2)} / ${s.dailyDdLimit.toFixed(2)}
               </span>
             </div>
             <div style={{ background: "#222", borderRadius: 4, height: 8, overflow: "hidden" }}>
               <div style={{
-                background: parseFloat(dailyDdPct) > 80 ? "#f87171" : parseFloat(dailyDdPct) > 50 ? "#facc15" : "#4ade80",
+                background: parseFloat(dailyDdPct) > 80 ? "#cf5b5b" : parseFloat(dailyDdPct) > 50 ? "#cfb95b" : "#22b89a",
                 height: "100%", width: `${Math.min(100, parseFloat(dailyDdPct))}%`, borderRadius: 4, transition: "width 0.3s",
               }} />
             </div>
             <div style={{ fontSize: 10, color: "#555", marginTop: 2, display: "flex", justifyContent: "space-between" }}>
               <span>{dailyDdPct}% of daily limit used</span>
               {s.dailyPnl != null && (
-                <span style={{ color: s.dailyPnl >= 0 ? "#4ade80" : "#f87171" }}>
+                <span style={{ color: s.dailyPnl >= 0 ? "#22b89a" : "#cf5b5b" }}>
                   Daily P&L: {s.dailyPnl >= 0 ? "+" : ""}${s.dailyPnl.toFixed(2)}
                 </span>
               )}
@@ -810,13 +810,13 @@ function EngineStatus({ account, mob }) {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
               <span style={{ color: "#888" }}>Trailing DD</span>
-              <span style={{ color: parseFloat(trailingDdPct) > 80 ? "#f87171" : "#4ade80" }}>
+              <span style={{ color: parseFloat(trailingDdPct) > 80 ? "#cf5b5b" : "#22b89a" }}>
                 ${(s.highestEodBalance - s.equity).toFixed(2)} / ${trailingDdUsed.toFixed(2)}
               </span>
             </div>
             <div style={{ background: "#222", borderRadius: 4, height: 8, overflow: "hidden" }}>
               <div style={{
-                background: parseFloat(trailingDdPct) > 80 ? "#f87171" : parseFloat(trailingDdPct) > 50 ? "#facc15" : "#4ade80",
+                background: parseFloat(trailingDdPct) > 80 ? "#cf5b5b" : parseFloat(trailingDdPct) > 50 ? "#cfb95b" : "#22b89a",
                 height: "100%", width: `${Math.min(100, Math.max(0, parseFloat(trailingDdPct)))}%`, borderRadius: 4, transition: "width 0.3s",
               }} />
             </div>
@@ -839,7 +839,7 @@ function OpenPositions({ account, mob }) {
     return (
       <>
         <SectionHeader>Open Positions (0 / 5)</SectionHeader>
-        <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 16, border: "1px solid #2a2a3e", textAlign: "center", color: "#666", fontSize: 13, marginBottom: 14 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, padding: 16, border: "1px solid #22222e", textAlign: "center", color: "#666", fontSize: 13, marginBottom: 14 }}>
           No open positions — all slots available
         </div>
       </>
@@ -848,7 +848,7 @@ function OpenPositions({ account, mob }) {
   return (
     <>
       <SectionHeader>Open Positions ({positions.length} / 5)</SectionHeader>
-      <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginBottom: 14 }}>
+      <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -889,7 +889,7 @@ function OpenPositions({ account, mob }) {
                   onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
                   aria-expanded={isOpen}
                   style={{
-                    borderBottom: isOpen ? "none" : "1px solid #1f1f2f",
+                    borderBottom: isOpen ? "none" : "1px solid #1a1a26",
                     cursor: "pointer",
                     background: isOpen ? "#22223344" : "transparent",
                     transition: "background 0.15s",
@@ -902,28 +902,28 @@ function OpenPositions({ account, mob }) {
                   </td>
                   <td style={{ padding: "8px 10px", fontWeight: 600 }}>
                     {p.symbol}
-                    {trailEngaged && <span style={{ marginLeft: 6, fontSize: 9, color: "#facc15", border: "1px solid #facc1544", padding: "1px 5px", borderRadius: 3 }}>TRAIL</span>}
+                    {trailEngaged && <span style={{ marginLeft: 6, fontSize: 9, color: "#cfb95b", border: "1px solid #cfb95b44", padding: "1px 5px", borderRadius: 3 }}>TRAIL</span>}
                   </td>
                   <td style={{ padding: "8px 10px" }}>
-                    <span style={{ color: p.side === "BUY" ? "#4ade80" : "#f87171", fontSize: 12, fontWeight: 600 }}>
+                    <span style={{ color: p.side === "BUY" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
                       {p.side}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12 }}>
+                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>
                     {fmtPrice(p.entryPrice)}
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#f87171" }}>
+                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12, color: "#cf5b5b" }}>
                     {fmtPrice(p.stopLoss)}
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12, color: "#4ade80" }}>
+                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12, color: "#22b89a" }}>
                     {fmtPrice(p.takeProfit)}
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 600, color: (p.unrealizedPnl ?? 0) >= 0 ? "#4ade80" : "#f87171" }}>
+                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600, color: (p.unrealizedPnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b" }}>
                     {p.unrealizedPnl != null ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}` : "—"}
                   </td>
                 </tr>
                 {isOpen && (
-                  <tr style={{ borderBottom: "1px solid #1f1f2f" }}>
+                  <tr style={{ borderBottom: "1px solid #1a1a26" }}>
                     <td colSpan={7} style={{ padding: 0 }}>
                       <PositionDetailPanel position={p} account={account} mob={mob} trailEngaged={trailEngaged} />
                     </td>
@@ -935,7 +935,7 @@ function OpenPositions({ account, mob }) {
             </tbody>
           </table>
         </div>
-        <div style={{ padding: "6px 10px", borderTop: "1px solid #1f1f2f", fontSize: 10, color: "#555", textAlign: "center" }}>
+        <div style={{ padding: "6px 10px", borderTop: "1px solid #1a1a26", fontSize: 10, color: "#555", textAlign: "center" }}>
           {5 - positions.length} slot{5 - positions.length !== 1 ? "s" : ""} available · click any row for position detail
         </div>
       </div>
@@ -1015,12 +1015,12 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
     lineHeight: mob ? 1.35 : 1.45,
   };
   const fieldLabel = { color: "#888" };
-  const fieldVal = { color: "#e0e0e0", fontFamily: "monospace", wordBreak: "break-word" };
+  const fieldVal = { color: "#e0e0ea", fontFamily: "'Space Grotesk', ui-monospace, monospace", wordBreak: "break-word" };
   const sectionBox = {
-    background: "#13131f",
+    background: "#0e0e15",
     borderRadius: mob ? 6 : 8,
     padding: mob ? "9px 10px" : "12px 14px",
-    border: "1px solid #1f1f2f",
+    border: "1px solid #1a1a26",
     minWidth: 0,
   };
   const grid = {
@@ -1055,16 +1055,16 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
 
   return (
     <div style={{
-      background: "#0d0d18",
+      background: "#0a0a10",
       padding: mob ? "10px 8px" : "14px 16px",
-      borderTop: "1px solid #1f1f2f",
-      borderBottom: "1px solid #1f1f2f",
+      borderTop: "1px solid #1a1a26",
+      borderBottom: "1px solid #1a1a26",
     }}>
       {/* Chart (lazy-loaded) */}
       <div style={{ marginBottom: mob ? 10 : 12 }}>
         <Suspense fallback={
           <div style={{
-            background: "#13131f", borderRadius: mob ? 6 : 8, border: "1px solid #1f1f2f",
+            background: "#0e0e15", borderRadius: mob ? 6 : 8, border: "1px solid #1a1a26",
             padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
           }}>Loading chart…</div>
         }>
@@ -1078,7 +1078,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           <div style={sectionTitle}>Entry</div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Side</span>
-            <span style={{ ...fieldVal, color: p.side === "BUY" ? "#4ade80" : "#f87171" }}>
+            <span style={{ ...fieldVal, color: p.side === "BUY" ? "#22b89a" : "#cf5b5b" }}>
               {p.side === "BUY" ? "LONG" : "SHORT"}
             </span>
           </div>
@@ -1114,7 +1114,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           <div style={sectionTitle}>
             Stop
             {trailEngaged && (
-              <span style={{ marginLeft: 8, fontSize: 9, color: "#facc15", letterSpacing: 0.5 }}>
+              <span style={{ marginLeft: 8, fontSize: 9, color: "#cfb95b", letterSpacing: 0.5 }}>
                 · TRAIL ENGAGED
               </span>
             )}
@@ -1129,7 +1129,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Live stop</span>
-            <span style={{ ...fieldVal, color: stopMoved ? "#facc15" : "#f87171" }}>
+            <span style={{ ...fieldVal, color: stopMoved ? "#cfb95b" : "#cf5b5b" }}>
               {fmtPrice(p.stopLoss)}
               {stopMoved && p.originalStopLoss != null && (
                 <span style={{ color: "#666", marginLeft: 6 }}>
@@ -1151,7 +1151,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           <div style={sectionTitle}>
             Target
             {targetMoved && (
-              <span style={{ marginLeft: 8, fontSize: 9, color: "#facc15", letterSpacing: 0.5 }}>
+              <span style={{ marginLeft: 8, fontSize: 9, color: "#cfb95b", letterSpacing: 0.5 }}>
                 · MOVED
               </span>
             )}
@@ -1166,7 +1166,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Live target</span>
-            <span style={{ ...fieldVal, color: targetMoved ? "#facc15" : "#4ade80" }}>
+            <span style={{ ...fieldVal, color: targetMoved ? "#cfb95b" : "#22b89a" }}>
               {fmtPrice(p.takeProfit)}
               {targetMoved && p.originalTakeProfit != null && (
                 <span style={{ color: "#666", marginLeft: 6 }}>
@@ -1188,7 +1188,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           <div style={sectionTitle}>P&L</div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Unrealized</span>
-            <span style={{ ...fieldVal, color: (p.unrealizedPnl ?? 0) >= 0 ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+            <span style={{ ...fieldVal, color: (p.unrealizedPnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b", fontWeight: 700 }}>
               {p.unrealizedPnl != null
                 ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}`
                 : "—"}
@@ -1196,7 +1196,7 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>R-multiple</span>
-            <span style={{ ...fieldVal, color: (rMultipleNow ?? 0) >= 0 ? "#4ade80" : "#f87171" }}>
+            <span style={{ ...fieldVal, color: (rMultipleNow ?? 0) >= 0 ? "#22b89a" : "#cf5b5b" }}>
               {rMultipleNow != null
                 ? `${rMultipleNow >= 0 ? "+" : ""}${rMultipleNow.toFixed(2)}R`
                 : <span style={{ color: "#555", fontStyle: "italic" }}>needs original stop</span>}
@@ -1406,12 +1406,12 @@ function WatchlistDetailPanel({ entry, account, mob }) {
     lineHeight: mob ? 1.35 : 1.45,
   };
   const fieldLabel = { color: "#888" };
-  const fieldVal = { color: "#e0e0e0", fontFamily: "monospace", wordBreak: "break-word" };
+  const fieldVal = { color: "#e0e0ea", fontFamily: "'Space Grotesk', ui-monospace, monospace", wordBreak: "break-word" };
   const sectionBox = {
-    background: "#13131f",
+    background: "#0e0e15",
     borderRadius: mob ? 6 : 8,
     padding: mob ? "9px 10px" : "12px 14px",
-    border: "1px solid #1f1f2f",
+    border: "1px solid #1a1a26",
     minWidth: 0,
   };
   const grid = {
@@ -1422,16 +1422,16 @@ function WatchlistDetailPanel({ entry, account, mob }) {
 
   return (
     <div style={{
-      background: "#0d0d18",
+      background: "#0a0a10",
       padding: mob ? "10px 8px" : "14px 16px",
-      borderTop: "1px solid #1f1f2f",
-      borderBottom: "1px solid #1f1f2f",
+      borderTop: "1px solid #1a1a26",
+      borderBottom: "1px solid #1a1a26",
     }}>
       {/* Chart (lazy-loaded) */}
       <div style={{ marginBottom: mob ? 10 : 12 }}>
         <Suspense fallback={
           <div style={{
-            background: "#13131f", borderRadius: mob ? 6 : 8, border: "1px solid #1f1f2f",
+            background: "#0e0e15", borderRadius: mob ? 6 : 8, border: "1px solid #1a1a26",
             padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
           }}>Loading chart…</div>
         }>
@@ -1468,7 +1468,7 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Direction</span>
-            <span style={{ ...fieldVal, color: e.direction === "bullish" ? "#4ade80" : "#f87171" }}>
+            <span style={{ ...fieldVal, color: e.direction === "bullish" ? "#22b89a" : "#cf5b5b" }}>
               {e.direction === "bullish" ? "bullish" : "bearish"} ({e.setupType} {e.setupType === "IBO" ? "breakout" : "continuation"})
             </span>
           </div>
@@ -1479,14 +1479,14 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           <div style={sectionTitle}>Risk (if entry fires at break)</div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Stop</span>
-            <span style={{ ...fieldVal, color: "#f87171" }}>
+            <span style={{ ...fieldVal, color: "#cf5b5b" }}>
               {fmtPrice(e.stopPrice)}
               {breakToStop != null && <span style={{ color: "#666", marginLeft: 6 }}>(−{fmtPrice(breakToStop)})</span>}
             </span>
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Target</span>
-            <span style={{ ...fieldVal, color: "#4ade80" }}>
+            <span style={{ ...fieldVal, color: "#22b89a" }}>
               {fmtPrice(e.targetPrice)}
               {breakToTarget != null && <span style={{ color: "#666", marginLeft: 6 }}>(+{fmtPrice(breakToTarget)})</span>}
             </span>
@@ -1574,7 +1574,7 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Gate clears</span>
-            <span style={{ ...fieldVal, color: gate.ready ? "#4ade80" : "#facc15" }}>{gate.label}</span>
+            <span style={{ ...fieldVal, color: gate.ready ? "#22b89a" : "#cfb95b" }}>{gate.label}</span>
           </div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Inst type</span>
@@ -1590,7 +1590,7 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           <div style={sectionTitle}>Quality</div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Score</span>
-            <span style={{ ...fieldVal, color: e.qualityScore >= 0.6 ? "#4ade80" : e.qualityScore >= 0.5 ? "#facc15" : "#888" }}>
+            <span style={{ ...fieldVal, color: e.qualityScore >= 0.6 ? "#22b89a" : e.qualityScore >= 0.5 ? "#cfb95b" : "#888" }}>
               {(e.qualityScore * 100).toFixed(1)}%
               {account?.config?.quality_gate != null && (
                 <span style={{ color: "#666", marginLeft: 6 }}>(gate: {(account.config.quality_gate / 100).toFixed(2)})</span>
@@ -1607,7 +1607,7 @@ function WatchlistDetailPanel({ entry, account, mob }) {
               {Object.entries(e.subScores).map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", paddingLeft: 8 }}>
                   <span>{k}</span>
-                  <span style={{ fontFamily: "monospace" }}>{typeof v === "number" ? v.toFixed(3) : String(v)}</span>
+                  <span style={{ fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>{typeof v === "number" ? v.toFixed(3) : String(v)}</span>
                 </div>
               ))}
             </div>
@@ -1637,11 +1637,11 @@ function Watchlist({ account, mob }) {
       <SectionHeader>Entry Queue ({watchlist.length} waiting)</SectionHeader>
 
       {watchlist.length === 0 ? (
-        <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 20, border: "1px solid #2a2a3e", textAlign: "center", color: "#666", fontSize: 13 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, padding: 20, border: "1px solid #22222e", textAlign: "center", color: "#666", fontSize: 13 }}>
           No active watchlist entries — waiting for next H4 scan
         </div>
       ) : (
-        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden" }}>
+        <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
@@ -1672,7 +1672,7 @@ function Watchlist({ account, mob }) {
                     onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
                     aria-expanded={isOpen}
                     style={{
-                      borderBottom: isOpen ? "none" : "1px solid #1f1f2f",
+                      borderBottom: isOpen ? "none" : "1px solid #1a1a26",
                       opacity: blocked ? 0.45 : 1,
                       cursor: "pointer",
                       background: isOpen ? "#22223344" : "transparent",
@@ -1684,38 +1684,38 @@ function Watchlist({ account, mob }) {
                     <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
                       {isOpen ? "▾" : "▸"}
                     </td>
-                    <td style={{ padding: "8px 10px", color: "#60a5fa", fontWeight: 700, fontSize: 14 }}>{i + 1}</td>
+                    <td style={{ padding: "8px 10px", color: "#7eb4fa", fontWeight: 700, fontSize: 14 }}>{i + 1}</td>
                     <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{blocked ? " *" : ""}</td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ color: e.direction === "bullish" ? "#4ade80" : "#f87171", fontSize: 12, fontWeight: 600 }}>
+                      <span style={{ color: e.direction === "bullish" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
                         {e.direction === "bullish" ? "LONG" : "SHORT"}
                       </span>
                     </td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ background: e.setupType === "IBO" ? "#60a5fa22" : "#c084fc22", color: e.setupType === "IBO" ? "#60a5fa" : "#c084fc", padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ background: e.setupType === "IBO" ? "#7eb4fa22" : "#a78bfa22", color: e.setupType === "IBO" ? "#7eb4fa" : "#a78bfa", padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                         {e.setupType}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 10px", color: "#f87171", fontFamily: "monospace", fontSize: 12 }}>{e.stopPrice != null ? e.stopPrice.toFixed(e.stopPrice < 10 ? 4 : 2) : "—"}</td>
-                    <td style={{ padding: "8px 10px", color: "#4ade80", fontFamily: "monospace", fontSize: 12 }}>{e.targetPrice != null ? e.targetPrice.toFixed(e.targetPrice < 10 ? 4 : 2) : "—"}</td>
+                    <td style={{ padding: "8px 10px", color: "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.stopPrice != null ? e.stopPrice.toFixed(e.stopPrice < 10 ? 4 : 2) : "—"}</td>
+                    <td style={{ padding: "8px 10px", color: "#22b89a", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.targetPrice != null ? e.targetPrice.toFixed(e.targetPrice < 10 ? 4 : 2) : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ color: e.qualityScore >= 0.6 ? "#4ade80" : e.qualityScore >= 0.5 ? "#facc15" : "#888" }}>
+                      <span style={{ color: e.qualityScore >= 0.6 ? "#22b89a" : e.qualityScore >= 0.5 ? "#cfb95b" : "#888" }}>
                         {(e.qualityScore * 100).toFixed(0)}%
                       </span>
                     </td>
-                    <td style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 12 }}>
+                    <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>
                       {e.barsElapsed}/{e.maxEntryBars}
                     </td>
                     <td style={{ padding: "8px 10px", fontSize: 12 }}>{fmtAge(e.ageMinutes)}</td>
                     <td style={{ padding: "8px 10px", fontSize: 12 }}>{e.pullbackDepth != null ? `${(e.pullbackDepth * 100).toFixed(1)}%` : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>
-                      <span style={{ background: blocked ? "#f8717122" : "#facc1522", color: blocked ? "#f87171" : "#facc15", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ background: blocked ? "#cf5b5b22" : "#cfb95b22", color: blocked ? "#cf5b5b" : "#cfb95b", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                         {blocked ? "BLOCKED" : e.status}
                       </span>
                     </td>
                   </tr>
                   {isOpen && (
-                    <tr key={`detail-${rowKey}`} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                    <tr key={`detail-${rowKey}`} style={{ borderBottom: "1px solid #1a1a26" }}>
                       <td colSpan={12} style={{ padding: 0 }}>
                         <WatchlistDetailPanel entry={e} account={account} mob={mob} />
                       </td>
@@ -1727,7 +1727,7 @@ function Watchlist({ account, mob }) {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: "6px 10px", borderTop: "1px solid #1f1f2f", fontSize: 10, color: "#555", textAlign: "center" }}>
+          <div style={{ padding: "6px 10px", borderTop: "1px solid #1a1a26", fontSize: 10, color: "#555", textAlign: "center" }}>
             Sorted by quality score (priority queue) · click any row for setup detail · * = symbol has open position (blocked)
           </div>
         </div>
@@ -1737,7 +1737,7 @@ function Watchlist({ account, mob }) {
       {recentRemovals.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: "#888", margin: "0 0 8px" }}>Recent Removals</h3>
-          <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden" }}>
+          <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
@@ -1749,15 +1749,15 @@ function Watchlist({ account, mob }) {
                 </thead>
                 <tbody>
                   {recentRemovals.map((r, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                    <tr key={i} style={{ borderBottom: "1px solid #1a1a26" }}>
                       <td style={{ padding: "6px 10px", fontWeight: 600 }}>{r.symbol}</td>
                       <td style={{ padding: "6px 10px" }}>{r.setupType}</td>
-                      <td style={{ padding: "6px 10px", color: r.direction === "bullish" ? "#4ade80" : "#f87171" }}>
+                      <td style={{ padding: "6px 10px", color: r.direction === "bullish" ? "#22b89a" : "#cf5b5b" }}>
                         {r.direction === "bullish" ? "LONG" : "SHORT"}
                       </td>
                       <td style={{ padding: "6px 10px" }}>
                         <span style={{
-                          color: r.reason.includes("Stop hit") ? "#f87171" : r.reason.includes("Expired") ? "#888" : "#facc15",
+                          color: r.reason.includes("Stop hit") ? "#cf5b5b" : r.reason.includes("Expired") ? "#888" : "#cfb95b",
                         }}>{r.reason}</span>
                       </td>
                       <td style={{ padding: "6px 10px", color: "#666" }}>{fmtTime(r.time)}</td>
@@ -1790,7 +1790,7 @@ function ScanActivity({ account, mob }) {
 
       <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: 14 }}>
         {/* H4 Scans */}
-        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14, minWidth: 0 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", padding: 14, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "#ccc" }}>
               H4 Scans <span style={{ color: "#888", fontWeight: 400 }}>({account.engineState.h4Scans} total)</span>
@@ -1811,13 +1811,13 @@ function ScanActivity({ account, mob }) {
             <div style={{ fontSize: 12, color: "#888", padding: "8px 4px", lineHeight: 1.5 }}>
               <div style={{ marginBottom: 6 }}>
                 Total H4 scans completed:{" "}
-                <span style={{ color: "#60a5fa", fontWeight: 600 }}>
+                <span style={{ color: "#7eb4fa", fontWeight: 600 }}>
                   {account.engineState?.h4Scans ?? "—"}
                 </span>
               </div>
               <div style={{ marginBottom: 6 }}>
                 Next H4 scan:{" "}
-                <span style={{ color: "#60a5fa", fontWeight: 600 }}>
+                <span style={{ color: "#7eb4fa", fontWeight: 600 }}>
                   {account.engineState?.nextH4Scan
                     ? fmtScanTime(getNextH4Scan(account.engineState.nextH4Scan))
                     : "—"}
@@ -1831,9 +1831,9 @@ function ScanActivity({ account, mob }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {displayH4.slice().reverse().map((scan, i) => (
-                <div key={i} style={{ background: "#12121f", borderRadius: 6, padding: "8px 10px", border: "1px solid #1f1f2f" }}>
+                <div key={i} style={{ background: "#0e0e15", borderRadius: 6, padding: "8px 10px", border: "1px solid #1a1a26" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: scan.additions.length > 0 ? 6 : 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#e0e0e0" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#e0e0ea" }}>
                       Scan #{scan.scanNumber}
                     </span>
                     <span style={{ fontSize: 11, color: "#666" }}>{scan.scanTime}</span>
@@ -1843,9 +1843,9 @@ function ScanActivity({ account, mob }) {
                       {scan.additions.map((a, j) => (
                         <span key={j} style={{
                           fontSize: 10, padding: "2px 6px", borderRadius: 3,
-                          background: a.setupType === "IBO" ? "#60a5fa15" : "#c084fc15",
-                          color: a.setupType === "IBO" ? "#60a5fa" : "#c084fc",
-                          border: `1px solid ${a.setupType === "IBO" ? "#60a5fa22" : "#c084fc22"}`,
+                          background: a.setupType === "IBO" ? "#7eb4fa15" : "#a78bfa15",
+                          color: a.setupType === "IBO" ? "#7eb4fa" : "#a78bfa",
+                          border: `1px solid ${a.setupType === "IBO" ? "#7eb4fa22" : "#a78bfa22"}`,
                         }}>
                           {a.symbol} {a.direction === "buy" ? "L" : "S"} {a.setupType} ({(a.score * 100).toFixed(0)}%)
                         </span>
@@ -1861,7 +1861,7 @@ function ScanActivity({ account, mob }) {
         </div>
 
         {/* M10 Scans */}
-        <div style={{ background: "#1a1a2e", borderRadius: 10, border: "1px solid #2a2a3e", padding: 14, minWidth: 0 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", padding: 14, minWidth: 0 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 10px", color: "#ccc" }}>
             M10 Entry Scans <span style={{ color: "#888", fontWeight: 400 }}>({account.engineState.m10Scans} total)</span>
           </h3>
@@ -1874,25 +1874,25 @@ function ScanActivity({ account, mob }) {
                 return (
                   <div key={i} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "6px 10px", background: "#12121f", borderRadius: 6, border: "1px solid #1f1f2f",
+                    padding: "6px 10px", background: "#0e0e15", borderRadius: 6, border: "1px solid #1a1a26",
                     flexWrap: "wrap", gap: 6,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                       <span style={{
                         width: 6, height: 6, borderRadius: "50%",
-                        background: scan.entriesTriggered > 0 ? "#4ade80" : "#333",
+                        background: scan.entriesTriggered > 0 ? "#22b89a" : "#333",
                         display: "inline-block",
                       }} />
                       <span style={{ fontSize: 11, color: "#888" }}>{fmtTime(scan.time)}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                       {statusEntries.map(([sym, bars]) => (
-                        <span key={sym} style={{ fontSize: 10, color: "#888", fontFamily: "monospace" }}>
-                          {sym} <span style={{ color: "#60a5fa" }}>{bars}</span>
+                        <span key={sym} style={{ fontSize: 10, color: "#888", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
+                          {sym} <span style={{ color: "#7eb4fa" }}>{bars}</span>
                         </span>
                       ))}
                       {scan.entriesTriggered > 0 && (
-                        <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 600 }}>
+                        <span style={{ fontSize: 10, color: "#22b89a", fontWeight: 600 }}>
                           {scan.entriesTriggered} ENTRY
                         </span>
                       )}
@@ -2021,7 +2021,7 @@ function TradePerformance({ account, mob }) {
     return (
       <>
         <SectionHeader>Trade Performance</SectionHeader>
-        <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 20, border: "1px solid #2a2a3e", textAlign: "center", color: "#666", fontSize: 13 }}>
+        <div style={{ background: "#13131c", borderRadius: 10, padding: 20, border: "1px solid #22222e", textAlign: "center", color: "#666", fontSize: 13 }}>
           No closed trades yet for {account?.label || "this account"}
         </div>
       </>
@@ -2064,7 +2064,7 @@ function TradePerformance({ account, mob }) {
   }
 
   const confLabel = trades.length >= 200 ? "Robust" : trades.length >= 50 ? "Moderate" : trades.length >= 20 ? "Early" : "Insufficient";
-  const confColor = trades.length >= 200 ? "#4ade80" : trades.length >= 50 ? "#60a5fa" : trades.length >= 20 ? "#facc15" : "#888";
+  const confColor = trades.length >= 200 ? "#22b89a" : trades.length >= 50 ? "#7eb4fa" : trades.length >= 20 ? "#cfb95b" : "#888";
 
   return (
     <>
@@ -2076,10 +2076,10 @@ function TradePerformance({ account, mob }) {
           {confLabel} (N={trades.length})
         </span>
         <span style={{
-          background: (streak > 0 ? "#4ade80" : "#f87171") + "22",
-          color: streak > 0 ? "#4ade80" : "#f87171",
+          background: (streak > 0 ? "#22b89a" : "#cf5b5b") + "22",
+          color: streak > 0 ? "#22b89a" : "#cf5b5b",
           padding: "3px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600,
-          border: `1px solid ${streak > 0 ? "#4ade8044" : "#f8717144"}`,
+          border: `1px solid ${streak > 0 ? "#22b89a44" : "#cf5b5b44"}`,
         }}>
           Streak: {streak > 0 ? `W${streak}` : `L${Math.abs(streak)}`}
         </span>
@@ -2091,7 +2091,7 @@ function TradePerformance({ account, mob }) {
           {allModes.map(m => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-              background: mode === m ? "#4ade80" : "#1a1a2e", color: mode === m ? "#000" : "#888",
+              background: mode === m ? "#22b89a" : "#13131c", color: mode === m ? "#000" : "#888",
             }}>{m === "All" ? "All Modes" : m}</button>
           ))}
         </div>
@@ -2104,29 +2104,29 @@ function TradePerformance({ account, mob }) {
           label="Realized P&L"
           value={`${realizedPnl >= 0 ? "+" : ""}$${realizedPnl.toFixed(2)}`}
           sub={`Truth: balance − $100k`}
-          color={realizedPnl >= 0 ? "#4ade80" : "#f87171"}
+          color={realizedPnl >= 0 ? "#22b89a" : "#cf5b5b"}
         />
         <Card
           label="Live Balance"
           value={`$${finalBal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
           sub={`Equity: $${finalEq.toLocaleString(undefined, { maximumFractionDigits: 2 })} (open ${openPnl >= 0 ? "+" : ""}$${openPnl.toFixed(2)})`}
-          color={finalBal >= 100000 ? "#4ade80" : "#f87171"}
+          color={finalBal >= 100000 ? "#22b89a" : "#cf5b5b"}
         />
         <Card
           label="Max Drawdown"
           value={`${maxDD}%`}
           sub={`Daily max: ${maxDailyDD}%`}
-          color={maxDD < 10 ? "#4ade80" : "#f87171"}
+          color={maxDD < 10 ? "#22b89a" : "#cf5b5b"}
         />
         <Card
           label="Win Rate"
           value={denom > 0 ? `${winRate}%` : "—"}
           sub={denom > 0 ? `${denom} graded (${wins}W / ${losses}L)` : "No graded trades"}
-          color={winRate >= 50 ? "#4ade80" : winRate > 0 ? "#facc15" : "#f87171"}
+          color={winRate >= 50 ? "#22b89a" : winRate > 0 ? "#cfb95b" : "#cf5b5b"}
         />
         <div
           title="Phantom closes + timeout exits + unknown-outcome rows excluded from WR denominator per backtest parity"
-          style={{ background: "#1a1a2e", borderRadius: 10, padding: 14, border: "1px solid #2a2a3e", color: flagged > 0 ? "#facc15" : "#888" }}
+          style={{ background: "#13131c", borderRadius: 10, padding: 14, border: "1px solid #22222e", color: flagged > 0 ? "#cfb95b" : "#888" }}
         >
           <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 }}>Flagged</div>
           <div style={{ fontSize: 22, fontWeight: 600, marginTop: 2 }}>{flagged}</div>
@@ -2138,7 +2138,7 @@ function TradePerformance({ account, mob }) {
           label="Return"
           value={realizedPnl !== 0 ? `${realizedPnl >= 0 ? "+" : ""}${((realizedPnl / 100000) * 100).toFixed(2)}%` : "—"}
           sub="On $100k starting capital"
-          color={realizedPnl >= 0 ? "#4ade80" : "#f87171"}
+          color={realizedPnl >= 0 ? "#22b89a" : "#cf5b5b"}
         />
       </div>
       <div style={{ fontSize: 11, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
@@ -2151,12 +2151,12 @@ function TradePerformance({ account, mob }) {
         {[["equity", "Equity Curve"], ["monthly", "Monthly P&L"], ["trades", "R-Multiples"]].map(([v, l]) => (
           <button key={v} onClick={() => setView(v)} style={{
             padding: "7px 18px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 500,
-            background: view === v ? "#4ade80" : "#1a1a2e", color: view === v ? "#000" : "#888",
+            background: view === v ? "#22b89a" : "#13131c", color: view === v ? "#000" : "#888",
           }}>{l}</button>
         ))}
       </div>
 
-      <div style={{ background: "#1a1a2e", borderRadius: 12, border: "1px solid #2a2a3e", padding: "16px 12px 6px" }}>
+      <div style={{ background: "#13131c", borderRadius: 12, border: "1px solid #22222e", padding: "16px 12px 6px" }}>
         {view === "equity" && (<>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, paddingLeft: 8 }}>
             Equity Curve — ${startBal.toLocaleString(undefined, { maximumFractionDigits: 2 })} → ${finalBal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -2169,8 +2169,8 @@ function TradePerformance({ account, mob }) {
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={equityData}>
                 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4ade80" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#4ade80" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor="#22b89a" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#22b89a" stopOpacity={0.02} />
                 </linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                 <XAxis
@@ -2181,7 +2181,7 @@ function TradePerformance({ account, mob }) {
                 <YAxis tick={{ fontSize: 11, fill: "#666" }} domain={["auto", "auto"]} tickFormatter={v => `$${(v / 1000).toFixed(1)}k`} />
                 <Tooltip content={<Tip />} />
                 <ReferenceLine y={100000} stroke="#555" strokeDasharray="4 4" />
-                <Area type="monotone" dataKey="bal" stroke="#4ade80" strokeWidth={1.5} fill="url(#g)" dot={equityData.length < 20 ? { r: 3, fill: "#4ade80" } : false} />
+                <Area type="monotone" dataKey="bal" stroke="#22b89a" strokeWidth={1.5} fill="url(#g)" dot={equityData.length < 20 ? { r: 3, fill: "#22b89a" } : false} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -2189,7 +2189,7 @@ function TradePerformance({ account, mob }) {
             {equityData.length} cTrader balance snapshot{equityData.length !== 1 ? "s" : ""} · sourced from live account
             {account?.meta?.droppedSnapshots > 0 && (
               <span
-                style={{ color: "#facc15", marginLeft: 6 }}
+                style={{ color: "#cfb95b", marginLeft: 6 }}
                 title="Rows where balance is 0 or NULL. Excluded from chart + DD math. Upstream publisher/engine data-quality investigation pending."
               >
                 · {account.meta.droppedSnapshots} malformed snapshot{account.meta.droppedSnapshots !== 1 ? "s" : ""} excluded
@@ -2197,7 +2197,7 @@ function TradePerformance({ account, mob }) {
             )}
             {account?.meta?.excludedIncidents > 0 && (
               <span
-                style={{ color: "#facc15", marginLeft: 6 }}
+                style={{ color: "#cfb95b", marginLeft: 6 }}
                 title="Rows inside a known-incident window (see EXCLUDED_INCIDENTS in useSupabaseData.js). Removed once upstream root cause is fixed and re-verified."
               >
                 · {account.meta.excludedIncidents} row{account.meta.excludedIncidents !== 1 ? "s" : ""} excluded from known incident (2026-04-16 bridge overlap)
@@ -2216,9 +2216,9 @@ function TradePerformance({ account, mob }) {
               <YAxis yAxisId="bal" orientation="right" tick={{ fontSize: 11, fill: "#666" }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<Tip />} />
               <Bar yAxisId="pnl" dataKey="pnl" radius={[4, 4, 0, 0]}>
-                {monthlyData.map((m, i) => <Cell key={i} fill={m.pnl >= 0 ? "#4ade80" : "#f87171"} fillOpacity={0.8} />)}
+                {monthlyData.map((m, i) => <Cell key={i} fill={m.pnl >= 0 ? "#22b89a" : "#cf5b5b"} fillOpacity={0.8} />)}
               </Bar>
-              <Line yAxisId="bal" type="monotone" dataKey="bal" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3, fill: "#60a5fa" }} />
+              <Line yAxisId="bal" type="monotone" dataKey="bal" stroke="#7eb4fa" strokeWidth={2} dot={{ r: 3, fill: "#7eb4fa" }} />
             </ComposedChart>
           </ResponsiveContainer>
         </>)}
@@ -2227,7 +2227,7 @@ function TradePerformance({ account, mob }) {
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, paddingLeft: 8 }}>
             Trade R-Multiples — {rChartData.length} Events
           </div>
-          <div style={{ fontSize: 11, color: "#facc15", marginBottom: 8, paddingLeft: 8 }}>
+          <div style={{ fontSize: 11, color: "#cfb95b", marginBottom: 8, paddingLeft: 8 }}>
             Engine view — these R values are recorded by the strategy and may not reflect actual fills
           </div>
           <ResponsiveContainer width="100%" height={300}>
@@ -2238,7 +2238,7 @@ function TradePerformance({ account, mob }) {
               <Tooltip content={<Tip />} />
               <ReferenceLine y={0} stroke="#555" />
               <Bar dataKey="r" maxBarSize={6}>
-                {rChartData.map((d, i) => <Cell key={i} fill={d.r >= 0 ? "#4ade80" : "#f87171"} fillOpacity={0.7} />)}
+                {rChartData.map((d, i) => <Cell key={i} fill={d.r >= 0 ? "#22b89a" : "#cf5b5b"} fillOpacity={0.7} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -2247,7 +2247,7 @@ function TradePerformance({ account, mob }) {
 
       {/* Mode breakdown */}
       {modeBreakdown.length > 1 && (
-        <div style={{ background: "#1a1a2e", borderRadius: 12, border: "1px solid #2a2a3e", padding: 16, marginTop: 14 }}>
+        <div style={{ background: "#13131c", borderRadius: 12, border: "1px solid #22222e", padding: 16, marginTop: 14 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 10px" }}>Performance by Entry Type</h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2260,12 +2260,12 @@ function TradePerformance({ account, mob }) {
               </thead>
               <tbody>
                 {modeBreakdown.map(m => (
-                  <tr key={m.mode} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                  <tr key={m.mode} style={{ borderBottom: "1px solid #1a1a26" }}>
                     <td style={{ padding: "6px 8px", fontWeight: 600 }}>{m.mode}</td>
                     <td style={{ padding: "6px 8px" }}>{m.trades}</td>
                     <td style={{ padding: "6px 8px" }}>{m.wr}%</td>
-                    <td style={{ padding: "6px 8px", color: m.totalR >= 0 ? "#4ade80" : "#f87171" }}>{m.totalR > 0 ? "+" : ""}{m.totalR}</td>
-                    <td style={{ padding: "6px 8px", color: m.avgR >= 0 ? "#4ade80" : "#f87171" }}>{m.avgR > 0 ? "+" : ""}{m.avgR}</td>
+                    <td style={{ padding: "6px 8px", color: m.totalR >= 0 ? "#22b89a" : "#cf5b5b" }}>{m.totalR > 0 ? "+" : ""}{m.totalR}</td>
+                    <td style={{ padding: "6px 8px", color: m.avgR >= 0 ? "#22b89a" : "#cf5b5b" }}>{m.avgR > 0 ? "+" : ""}{m.avgR}</td>
                     <td style={{ padding: "6px 8px" }}>{m.pf === Infinity ? "\u221e" : m.pf.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -2277,7 +2277,7 @@ function TradePerformance({ account, mob }) {
 
       {/* Symbol breakdown */}
       {symbolBreakdown.length > 0 && (
-        <div style={{ background: "#1a1a2e", borderRadius: 12, border: "1px solid #2a2a3e", padding: 16, marginTop: 14 }}>
+        <div style={{ background: "#13131c", borderRadius: 12, border: "1px solid #22222e", padding: 16, marginTop: 14 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 10px" }}>Performance by Symbol</h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2290,12 +2290,12 @@ function TradePerformance({ account, mob }) {
               </thead>
               <tbody>
                 {symbolBreakdown.map(s => (
-                  <tr key={s.sym} style={{ borderBottom: "1px solid #1f1f2f" }}>
+                  <tr key={s.sym} style={{ borderBottom: "1px solid #1a1a26" }}>
                     <td style={{ padding: "6px 8px", fontWeight: 600 }}>{s.sym}</td>
                     <td style={{ padding: "6px 8px" }}>{s.trades}</td>
                     <td style={{ padding: "6px 8px" }}>{s.wr}%</td>
-                    <td style={{ padding: "6px 8px", color: s.totalR >= 0 ? "#4ade80" : "#f87171" }}>{s.totalR > 0 ? "+" : ""}{s.totalR}</td>
-                    <td style={{ padding: "6px 8px", color: s.avgR >= 0 ? "#4ade80" : "#f87171" }}>{s.avgR > 0 ? "+" : ""}{s.avgR}</td>
+                    <td style={{ padding: "6px 8px", color: s.totalR >= 0 ? "#22b89a" : "#cf5b5b" }}>{s.totalR > 0 ? "+" : ""}{s.totalR}</td>
+                    <td style={{ padding: "6px 8px", color: s.avgR >= 0 ? "#22b89a" : "#cf5b5b" }}>{s.avgR > 0 ? "+" : ""}{s.avgR}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2315,7 +2315,7 @@ function AccountView({ account, mob }) {
     <>
       {/* Account header */}
       <div style={{
-        background: "#1a1a2e",
+        background: "#13131c",
         border: `1px solid ${account.color}44`,
         borderRadius: 10,
         padding: "12px 16px",
@@ -2356,7 +2356,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={{ background: "#0f0f1a", color: "#888", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui" }}>
+      <div style={{ background: "#0b0b0f", color: "#888", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Urbanist', system-ui, sans-serif" }}>
         Loading dashboard data...
       </div>
     );
@@ -2364,7 +2364,7 @@ export default function App() {
 
   if (error || !ACCOUNTS) {
     return (
-      <div style={{ background: "#0f0f1a", color: "#f87171", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui" }}>
+      <div style={{ background: "#0b0b0f", color: "#cf5b5b", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Urbanist', system-ui, sans-serif" }}>
         Failed to load data: {error || "No data available"}
       </div>
     );
@@ -2374,14 +2374,23 @@ export default function App() {
   const currentAccount = isMain ? null : ACCOUNTS[activeTab];
 
   return (
-    <div style={{ background: "#0f0f1a", color: "#e0e0e0", minHeight: "100vh", padding: mob ? "12px" : "20px", fontFamily: "system-ui,-apple-system,sans-serif" }}>
+    <div style={{ background: "#0b0b0f", color: "#e0e0ea", minHeight: "100vh", padding: mob ? "12px" : "20px", fontFamily: "'Urbanist', system-ui, -apple-system, sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
 
         {/* Header */}
-        <h1 style={{ fontSize: mob ? 20 : 26, fontWeight: 700, margin: 0, color: "#fff" }}>
+        <h1 style={{
+          fontSize: mob ? 20 : 26,
+          fontWeight: 800,
+          margin: 0,
+          letterSpacing: -0.5,
+          background: "linear-gradient(135deg,#2a9daf,#22b89a,#3cc78a)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}>
           FTMO V4 — Multi-Variant Dashboard
         </h1>
-        <p style={{ color: "#888", margin: "4px 0 14px", fontSize: 13 }}>
+        <p style={{ color: "#777", margin: "4px 0 14px", fontSize: 13 }}>
           Production + Challenge + 4 strategy variants · Live cTrader demo accounts
         </p>
 
@@ -2398,7 +2407,7 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Footer */}
-        <div style={{ textAlign: "center", marginTop: 24, padding: "12px 0", fontSize: 11, color: "#555", borderTop: "1px solid #1a1a2e" }}>
+        <div style={{ textAlign: "center", marginTop: 24, padding: "12px 0", fontSize: 11, color: "#555", borderTop: "1px solid #13131c" }}>
           FTMO V4 Engine · Data snapshot: {LAST_UPDATED ? new Date(LAST_UPDATED).toLocaleString() : "—"}
         </div>
       </div>

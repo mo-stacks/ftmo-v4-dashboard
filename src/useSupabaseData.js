@@ -5,15 +5,15 @@ const REFRESH_INTERVAL = 60 * 1000; // 1 minute
 const STARTING_BALANCE = 100000;
 
 const VARIANT_META = {
-  production: { label: "Production", fullLabel: "FTMO_PROD — half-fib stop, no trail",       color: "#4ade80", displayId: "17102428", accountId: "47151641" },
-  alpha:      { label: "Alpha",      fullLabel: "Alpha — classifier stop, no trail (control)", color: "#60a5fa", displayId: "5797573",  accountId: "46915262" },
-  bravo:      { label: "Bravo",      fullLabel: "Bravo — classifier stop + trail-C5 (forex)", color: "#c084fc", displayId: "5797576",  accountId: "46915271" },
-  charlie:    { label: "Charlie",    fullLabel: "Charlie — classifier stop + trail-C5",       color: "#facc15", displayId: "5797577",  accountId: "46915274" },
-  delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + trail-C5 (+crypto)", color: "#f87171", displayId: "5797579",  accountId: "46915276" },
+  production: { label: "Production", fullLabel: "FTMO_PROD — half-fib stop, no trail",       color: "#22b89a", displayId: "17102428", accountId: "47151641" },
+  alpha:      { label: "Alpha",      fullLabel: "Alpha — classifier stop, no trail (control)", color: "#7eb4fa", displayId: "5797573",  accountId: "46915262" },
+  bravo:      { label: "Bravo",      fullLabel: "Bravo — classifier stop + trail-C5 (forex)", color: "#a78bfa", displayId: "5797576",  accountId: "46915271" },
+  charlie:    { label: "Charlie",    fullLabel: "Charlie — classifier stop + trail-C5",       color: "#cfb95b", displayId: "5797577",  accountId: "46915274" },
+  delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + trail-C5 (+crypto)", color: "#cf5b5b", displayId: "5797579",  accountId: "46915276" },
   // 2026-04-30: FTMO 2-Step Challenge added. Same OAuth as Production;
   // bridge auto-routes by accountId (live host for PROD, demo host for Challenge).
   // Same code path: gate=100 (engine-validator), Phase 5 ON, V3 mgmt, V2 half-fib stop.
-  challenge:  { label: "Challenge",  fullLabel: "Challenge — half-fib stop, gate=100 (V2 + Plan A/B/C)", color: "#fb923c", displayId: "7545753",  accountId: "47142181" },
+  challenge:  { label: "Challenge",  fullLabel: "Challenge — half-fib stop, gate=100 (V2 + Plan A/B/C)", color: "#cf8f5b", displayId: "7545753",  accountId: "47142181" },
 };
 
 // Challenge first — primary funded-pathway account; Production (FTMO Free

@@ -17,20 +17,23 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
 
+// Palette aligned with the rest of the dashboard (and with the
+// ICS-V2 investor presentation). See index.css + App.jsx for the
+// project-wide tokens.
 const CHART_COLORS = {
-  bg: "#0d0d18",
-  grid: "#1f1f2f",
+  bg: "#0a0a10",
+  grid: "#1a1a26",
   text: "#888",
-  upBody: "#4ade80",
-  downBody: "#f87171",
-  upWick: "#4ade80",
-  downWick: "#f87171",
+  upBody: "#22b89a",
+  downBody: "#cf5b5b",
+  upWick: "#22b89a",
+  downWick: "#cf5b5b",
   // Annotation colors
-  breakLevel: "#facc15",   // amber — the level price must cross
-  stop: "#f87171",          // red
-  target: "#4ade80",        // green
+  breakLevel: "#cfb95b",   // gold — the level price must cross
+  stop: "#cf5b5b",          // red
+  target: "#22b89a",        // green
   fib786: "#a78bfa",        // purple
-  impulseStart: "#60a5fa",  // blue
+  impulseStart: "#7eb4fa",  // blue
 };
 
 export default function SetupChart({ entry, height = 280 }) {
@@ -184,9 +187,9 @@ export default function SetupChart({ entry, height = 280 }) {
         key={key}
         onClick={() => setTf(key)}
         style={{
-          background: active ? "#2a2a3e" : "transparent",
-          color: active ? "#e0e0e0" : "#666",
-          border: `1px solid ${active ? "#444" : "#1f1f2f"}`,
+          background: active ? "#22222e" : "transparent",
+          color: active ? "#e0e0ea" : "#666",
+          border: `1px solid ${active ? "#444" : "#1a1a26"}`,
           borderRadius: 4,
           padding: "3px 10px",
           fontSize: 10,
@@ -201,7 +204,7 @@ export default function SetupChart({ entry, height = 280 }) {
   };
 
   return (
-    <div style={{ background: CHART_COLORS.bg, borderRadius: 8, border: "1px solid #1f1f2f", padding: 8, minWidth: 0 }}>
+    <div style={{ background: CHART_COLORS.bg, borderRadius: 8, border: "1px solid #1a1a26", padding: 8, minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 10, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
           {entry?.symbol} chart

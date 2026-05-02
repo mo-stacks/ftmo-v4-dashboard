@@ -1,8 +1,12 @@
 html, body, #root {
   margin: 0;
   padding: 0;
-  background: #0f0f1a;
+  background: #0b0b0f;
   min-height: 100vh;
+  font-family: 'Urbanist', system-ui, -apple-system, sans-serif;
+  color: #e0e0ea;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Prevent the whole page from being pushed wider than the viewport.
