@@ -925,7 +925,18 @@ function OpenPositions({ account, mob }) {
                 {isOpen && (
                   <tr style={{ borderBottom: "1px solid #1a1a26" }}>
                     <td colSpan={7} style={{ padding: 0 }}>
-                      <PositionDetailPanel position={p} account={account} mob={mob} trailEngaged={trailEngaged} />
+                      {/* Mobile: anchor the detail content to the left edge
+                          of the visible viewport via position:sticky so it
+                          doesn't inherit the table's wider min-width and
+                          push the chart off-screen. Desktop: full width is
+                          fine, the table fits the page wrapper. */}
+                      <div style={mob ? {
+                        position: "sticky", left: 0,
+                        width: "calc(100vw - 24px)",
+                        maxWidth: "100%", boxSizing: "border-box",
+                      } : undefined}>
+                        <PositionDetailPanel position={p} account={account} mob={mob} trailEngaged={trailEngaged} />
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -1717,7 +1728,17 @@ function Watchlist({ account, mob }) {
                   {isOpen && (
                     <tr key={`detail-${rowKey}`} style={{ borderBottom: "1px solid #1a1a26" }}>
                       <td colSpan={12} style={{ padding: 0 }}>
-                        <WatchlistDetailPanel entry={e} account={account} mob={mob} />
+                        {/* Mobile-only sticky to keep the detail panel
+                            anchored at the visible viewport's left edge
+                            even when the table itself overflows
+                            horizontally. Same pattern as OpenPositions. */}
+                        <div style={mob ? {
+                          position: "sticky", left: 0,
+                          width: "calc(100vw - 24px)",
+                          maxWidth: "100%", boxSizing: "border-box",
+                        } : undefined}>
+                          <WatchlistDetailPanel entry={e} account={account} mob={mob} />
+                        </div>
                       </td>
                     </tr>
                   )}

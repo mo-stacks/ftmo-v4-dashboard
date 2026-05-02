@@ -41,6 +41,10 @@ export default function SetupChart({ entry, height = 280 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+  // Ref read from inside the chart's autoscaleInfoProvider so it always
+  // has the freshest annotation prices without re-creating the chart on
+  // every entry change.
+  const annotationPricesRef = useRef([]);
   const [empty, setEmpty] = useState(false);
 
   // Pull candles for the selected timeframe. Defensive against missing/null.
@@ -70,6 +74,10 @@ export default function SetupChart({ entry, height = 280 }) {
       },
       rightPriceScale: {
         borderColor: CHART_COLORS.grid,
+        // 18% padding above and below the auto-scaled price range so the
+        // setup (and its annotation lines) sit comfortably away from the
+        // top/bottom edges of the chart canvas.
+        scaleMargins: { top: 0.18, bottom: 0.18 },
       },
       crosshair: {
         mode: 1, // magnet
@@ -85,6 +93,32 @@ export default function SetupChart({ entry, height = 280 }) {
       borderDownColor: CHART_COLORS.downBody,
       wickUpColor: CHART_COLORS.upWick,
       wickDownColor: CHART_COLORS.downWick,
+    });
+
+    // Auto-scale provider — extends the auto-computed price range to
+    // include all annotation prices, so stop/target/break lines never
+    // fall off the top or bottom of the chart even when they sit
+    // outside the visible candle range. Reads the current entry from
+    // a ref so this provider closure always sees the latest annotations.
+    series.applyOptions({
+      autoscaleInfoProvider: (originalProvider) => {
+        const orig = originalProvider();
+        if (!orig?.priceRange) return orig;
+        const ann = annotationPricesRef.current || [];
+        let { minValue, maxValue } = orig.priceRange;
+        for (const p of ann) {
+          if (p == null || isNaN(p)) continue;
+          if (p < minValue) minValue = p;
+          if (p > maxValue) maxValue = p;
+        }
+        return {
+          priceRange: { minValue, maxValue },
+          // Pixel-level padding on top of the % scaleMargins above —
+          // gives annotation labels (Stop / Target / Break ▲) breathing
+          // room from the chart edges.
+          margins: { above: 18, below: 18 },
+        };
+      },
     });
 
     chartRef.current = chart;
@@ -165,6 +199,18 @@ export default function SetupChart({ entry, height = 280 }) {
     addLine(entry?.targetPrice, CHART_COLORS.target, "Target");
     addLine(entry?.fib786, CHART_COLORS.fib786, "Fib 0.786");
     addLine(entry?.impulseStartPrice, CHART_COLORS.impulseStart, "Impulse start");
+
+    // Sync the autoscale provider's annotation list and trigger a
+    // re-scale so the chart fits both candles AND annotation lines
+    // with the configured margins.
+    annotationPricesRef.current = [
+      breakLevel,
+      entry?.stopPrice,
+      entry?.targetPrice,
+      entry?.fib786,
+      entry?.impulseStartPrice,
+    ].filter(p => p != null && !isNaN(p));
+    series.priceScale().applyOptions({ autoScale: true });
 
     // Pan to the right so the most recent ~40 bars are visible — that's
     // where the setup is forming and where annotation lines live. The
