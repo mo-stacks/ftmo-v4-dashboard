@@ -421,13 +421,23 @@ export function useSupabaseData() {
           // Original (entry-time) stop and target — never modified
           originalStopLoss: p.originalStopLoss ?? null,
           originalTakeProfit: p.originalTakeProfit ?? null,
+          // Engine-side amend flags — TRUE only when the engine has
+          // emitted a MGMT_STATE_TRANSITION (BE_MOVE / TRAIL_*) for
+          // this position. The TRAIL ENGAGED / MOVED badges in
+          // App.jsx gate on these. Numeric comparison of original-
+          // vs-live SL/TP produces false positives because cTrader
+          // adjusts SL/TP at order placement (~1-2 pips) even when
+          // the engine never amended. `?? null` for graceful fallback
+          // on rows from publishers that pre-date 2026-05-02.
+          stopAmendedAfterOpen: p.stopAmendedAfterOpen ?? null,
+          targetAmendedAfterOpen: p.targetAmendedAfterOpen ?? null,
           // Position metadata
           openTime: p.openTime ?? p.open_time ?? null,
           volume: p.volume ?? null,
           positionId: p.positionId ?? p.position_id ?? null,
-          // Per-position candles for the chart (engine work pending —
-          // shape mirrors watchlist: { h4: [...], m10: [...] } with
-          // unix-seconds t and o/h/l/c)
+          // Per-position candles for the chart. Shape mirrors
+          // watchlist: { h4: [...], m10: [...] } with unix-seconds
+          // t and o/h/l/c.
           candles: p.candles ?? null,
         }));
 
