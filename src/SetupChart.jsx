@@ -34,6 +34,7 @@ const CHART_COLORS = {
   target: "#22b89a",        // green
   fib786: "#a78bfa",        // purple
   impulseStart: "#7eb4fa",  // blue
+  entry: "#7eb4fa",         // blue — entry-price line (position panels)
 };
 
 export default function SetupChart({
@@ -215,6 +216,11 @@ export default function SetupChart({
     addLine(entry?.targetPrice, CHART_COLORS.target, "Target");
     addLine(entry?.fib786, CHART_COLORS.fib786, "Fib 0.786");
     addLine(entry?.impulseStartPrice, CHART_COLORS.impulseStart, "Impulse start");
+    // 2026-05-03: position-panel charts pass entryPrice. Watchlist
+    // entries don't (they have no entry yet — entry is what we WAIT
+    // for). For position charts the impulse*/break/fib786 props are
+    // null, so this is the only annotation between Stop and Target.
+    addLine(entry?.entryPrice, CHART_COLORS.entry, "Entry");
 
     // Sync the autoscale provider's annotation list and trigger a
     // re-scale so the chart fits both candles AND annotation lines
@@ -225,6 +231,7 @@ export default function SetupChart({
       entry?.targetPrice,
       entry?.fib786,
       entry?.impulseStartPrice,
+      entry?.entryPrice,
     ].filter(p => p != null && !isNaN(p));
     series.priceScale().applyOptions({ autoScale: true });
 

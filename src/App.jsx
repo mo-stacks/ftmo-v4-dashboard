@@ -1049,20 +1049,25 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
     symbol: p.symbol,
     candles: p.candles,
     direction: p.side === "BUY" ? "bullish" : "bearish",
-    // Reuse the same field names the chart expects, but mapped to
-    // position semantics:
-    //   impulseStartPrice → originalStopLoss (entry-time stop)
-    //   impulseEndPrice → originalTakeProfit (entry-time target)
-    //   stopPrice → live stopLoss
-    //   targetPrice → live takeProfit
-    //   fib786 → entryPrice (the entry line)
-    //   candidateBreakLevel → currentPrice (a "now" line)
-    impulseStartPrice: p.originalStopLoss,
-    impulseEndPrice: p.originalTakeProfit,
-    stopPrice: p.stopLoss,
-    targetPrice: p.takeProfit,
-    fib786: p.entryPrice,
-    candidateBreakLevel: p.currentPrice,
+    // 2026-05-03: position-panel chart shows position-relevant lines only.
+    // Previously this re-used the watchlist-shaped chart props with hacky
+    // mappings (impulseEndPrice → originalTakeProfit, etc.), which caused
+    // misleading labels — most visibly the "Break ▼" annotation rendering
+    // AT the target line when currentPrice was null and SetupChart's
+    // breakLevel = candidateBreakLevel ?? impulseEndPrice fallback fired.
+    //
+    // For positions: only Entry, live Stop, live Target are meaningful.
+    // "Break" / "Impulse start" / "Fib 0.786" are watchlist concepts —
+    // levels relevant BEFORE entry fires. After entry, the trade is in
+    // motion and those levels are historical noise. Original stop/target
+    // deltas are surfaced numerically in the panel below the chart.
+    stopPrice:           p.stopLoss,    // live (may move on trail/BE)
+    targetPrice:         p.takeProfit,  // live
+    entryPrice:          p.entryPrice,  // new: drawn as "Entry" line
+    impulseStartPrice:   null,          // watchlist-only
+    impulseEndPrice:     null,          // watchlist-only
+    candidateBreakLevel: null,          // watchlist-only
+    fib786:              null,          // watchlist-only
   };
 
   return (
