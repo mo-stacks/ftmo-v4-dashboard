@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a9daf"/>
+      <stop offset="50%" stop-color="#22b89a"/>
+      <stop offset="100%" stop-color="#3cc78a"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="#0b0b0f"/>
+  <path d="M40 130 L72 86 L108 110 L150 56" stroke="url(#g)" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="56" r="10" fill="#3cc78a"/>
+  <text x="96" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="#22b89a" text-anchor="middle">ICS V1</text>
+</svg>

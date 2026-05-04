@@ -10,6 +10,8 @@ import {
 } from "recharts";
 import { useSupabaseData } from "./useSupabaseData.js";
 import { supabase } from "./supabaseClient.js";
+import { useTradeAlerts } from "./useTradeAlerts.js";
+import AlertCenter from "./AlertCenter.jsx";
 import { VARIANT_CHANGE_EVENTS, attachChangeEvents } from "./changeEvents.js";
 
 /* ── error boundary ──────────────────────────────────────────────
@@ -2887,6 +2889,9 @@ export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
   const { accounts: ACCOUNTS, loading, lastUpdated: LAST_UPDATED, error, ACCOUNT_KEYS } = useSupabaseData();
+  // Trade alert hook — diffs each Supabase poll, emits browser
+  // notifications + in-page toasts + sound for entries / modifies / closes
+  const alerts = useTradeAlerts(ACCOUNTS);
 
   if (loading) {
     return (
@@ -2911,22 +2916,37 @@ export default function App() {
     <div style={{ background: "#0b0b0f", color: "#e0e0ea", minHeight: "100vh", padding: mob ? "12px" : "20px", fontFamily: "'Urbanist', system-ui, -apple-system, sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
 
-        {/* Header */}
-        <h1 style={{
-          fontSize: mob ? 20 : 26,
-          fontWeight: 800,
-          margin: 0,
-          letterSpacing: -0.5,
-          background: "linear-gradient(135deg,#2a9daf,#22b89a,#3cc78a)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}>
-          FTMO V4 — Multi-Variant Dashboard
-        </h1>
-        <p style={{ color: "#777", margin: "4px 0 14px", fontSize: 13 }}>
-          Production + Challenge + 4 strategy variants · Live cTrader demo accounts
-        </p>
+        {/* Header — title gradient + alert bell */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1 style={{
+              fontSize: mob ? 20 : 26,
+              fontWeight: 800,
+              margin: 0,
+              letterSpacing: -0.5,
+              background: "linear-gradient(135deg,#2a9daf,#22b89a,#3cc78a)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
+              FTMO V4 — Multi-Variant Dashboard
+            </h1>
+            <p style={{ color: "#777", margin: "4px 0 14px", fontSize: 13 }}>
+              Production + Challenge + 4 strategy variants · Live cTrader demo accounts
+            </p>
+          </div>
+          <AlertCenter
+            events={alerts.events}
+            unread={alerts.unread}
+            settings={alerts.settings}
+            setSettings={alerts.setSettings}
+            permission={alerts.permission}
+            requestPermission={alerts.requestPermission}
+            markAllRead={alerts.markAllRead}
+            clearEvents={alerts.clearEvents}
+            mob={mob}
+          />
+        </div>
 
         {/* Tab navigation */}
         <TabBar activeTab={activeTab} onChange={setActiveTab} mob={mob} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
