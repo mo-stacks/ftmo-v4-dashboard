@@ -30,7 +30,8 @@ const CHART_COLORS = {
   downWick: "#cf5b5b",
   // Annotation colors
   breakLevel: "#cfb95b",   // gold — the level price must cross
-  stop: "#cf5b5b",          // red
+  stop: "#cf5b5b",          // red — classifier-time stop estimate
+  projectedStop: "#f59e0b", // amber — projected fire-time stop (V2 pivot_half_fib)
   target: "#22b89a",        // green
   fib786: "#a78bfa",        // purple
   impulseStart: "#7eb4fa",  // blue
@@ -213,6 +214,13 @@ export default function SetupChart({
     addLine(breakLevel, CHART_COLORS.breakLevel,
             entry?.direction === "bullish" ? "Break ▲" : "Break ▼");
     addLine(entry?.stopPrice, CHART_COLORS.stop, "Stop");
+    // 2026-05-04: Projected fire-time stop for V2 pivot_half_fib variants.
+    // Computed in App.jsx WatchlistDetailPanel via computeProjectedStop()
+    // and passed through as `entry.projectedStopPrice`. Amber dashed line
+    // sits closer to the candidate break than the red classifier Stop —
+    // visually shows how much tighter the actual fire will be vs the
+    // looser watchlist-time estimate.
+    addLine(entry?.projectedStopPrice, CHART_COLORS.projectedStop, "Proj. Stop");
     addLine(entry?.targetPrice, CHART_COLORS.target, "Target");
     addLine(entry?.fib786, CHART_COLORS.fib786, "Fib 0.786");
     addLine(entry?.impulseStartPrice, CHART_COLORS.impulseStart, "Impulse start");
@@ -228,6 +236,7 @@ export default function SetupChart({
     annotationPricesRef.current = [
       breakLevel,
       entry?.stopPrice,
+      entry?.projectedStopPrice,
       entry?.targetPrice,
       entry?.fib786,
       entry?.impulseStartPrice,

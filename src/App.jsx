@@ -1850,6 +1850,101 @@ const inferInstType = (symbol) => {
   return "stock";
 };
 
+/* ── projected fire-time stop (V2 pivot_half_fib variants) ────────
+   Constants from engine/run_live.py:139-160. The engine recomputes
+   the stop at M10 fire time as:
+     offset = |fib_b - fib_a| × pivot_gap_fraction × |impulse_leg|
+            = 0.118 × 0.5 × |impulse_leg|
+            = 0.059 × |impulse_leg|
+     projected_stop = pivot_proxy ∓ offset   (− for long, + for short)
+   where pivot_proxy is the deepest point of the forming pullback.
+   The watchlist stop_price is the looser classifier-time estimate;
+   this projection approximates what the order will actually fire with. */
+
+const PROJ_STOP_FIB_A = 0.382;
+const PROJ_STOP_FIB_B = 0.500;
+const PROJ_STOP_PIVOT_GAP_FRACTION = 0.5;
+const PROJ_STOP_OFFSET_FRAC_OF_LEG =
+  Math.abs(PROJ_STOP_FIB_B - PROJ_STOP_FIB_A) * PROJ_STOP_PIVOT_GAP_FRACTION; // 0.059
+
+// Returns true if this account's variant uses the V2 pivot_half_fib
+// stop-recomputation at fire time. Source of truth is the dashboard's
+// VARIANT_CONFIG.stop_mode (kept in sync with the engine startup banner —
+// see useSupabaseData.js line 33 comment). Match is permissive on the
+// stop_mode string so spelling drift doesn't silently disable the
+// projection.
+function variantUsesPivotHalfFib(variantConfig) {
+  const mode = (variantConfig?.stop_mode || "").toLowerCase();
+  return /half[\s_-]?fib|pivot_half_fib/.test(mode);
+}
+
+// Compute the projected fire-time stop for a watchlist entry. Returns
+// { projectedStop, pivotProxy, anchorSource } or null when:
+//   - variant doesn't use pivot_half_fib
+//   - impulse_leg is missing / NaN
+//   - direction is missing
+//   - no anchor candle data and no fib_786 fallback
+// Pure function — no side effects, safe to call inline in render.
+function computeProjectedStop(entry, variantConfig) {
+  if (!variantUsesPivotHalfFib(variantConfig)) return null;
+  if (entry?.impulseLeg == null || isNaN(entry.impulseLeg)) return null;
+  if (!entry?.direction) return null;
+
+  const offset = PROJ_STOP_OFFSET_FRAC_OF_LEG * Math.abs(entry.impulseLeg);
+
+  // Anchor for "candles after impulse end" — publisher doesn't ship
+  // impulse_end_ts as its own field, so use scan_time as proxy. The
+  // H4 scan fires immediately after the bar that completed the impulse,
+  // so any M10 candle with ts >= scan_time is part of the forming
+  // pullback (or later). Acceptable approximation; if a future publisher
+  // change adds impulse_end_ts, prefer it here.
+  const anchorTs = entry.scanTime
+    ? Math.floor(new Date(entry.scanTime).getTime() / 1000)
+    : null;
+
+  let pivotProxy = null;
+  let anchorSource = null;
+  const m10 = entry.candles?.m10;
+  if (anchorTs != null && Array.isArray(m10) && m10.length > 0) {
+    const pullback = m10.filter(c => c.t >= anchorTs);
+    if (pullback.length > 0) {
+      if (entry.direction === "bullish") {
+        pivotProxy = Math.min(...pullback.map(c => c.l));
+      } else {
+        pivotProxy = Math.max(...pullback.map(c => c.h));
+      }
+      anchorSource = "m10_pullback";
+    }
+  }
+
+  // Fallback: candles haven't extended past impulse_end yet (fresh
+  // setup, or m10 not loaded) → use fib_786 as worst-case anchor.
+  if (pivotProxy == null && entry.fib786 != null) {
+    pivotProxy = entry.fib786;
+    anchorSource = "fib_786_fallback";
+  }
+  if (pivotProxy == null) return null;
+
+  // Cap: pullback already past fib_786 means the setup will invalidate
+  // at the next scan. Pin pivot_proxy at fib_786 as the worst case;
+  // engine will use the actual deepest low if it fires before invalid.
+  if (entry.fib786 != null) {
+    if (entry.direction === "bullish" && pivotProxy < entry.fib786) {
+      pivotProxy = entry.fib786;
+      anchorSource = "fib_786_capped";
+    } else if (entry.direction === "bearish" && pivotProxy > entry.fib786) {
+      pivotProxy = entry.fib786;
+      anchorSource = "fib_786_capped";
+    }
+  }
+
+  const projectedStop = entry.direction === "bullish"
+    ? pivotProxy - offset
+    : pivotProxy + offset;
+
+  return { projectedStop, pivotProxy, offset, anchorSource };
+}
+
 /* ── watchlist setup-detail panel ──────────────────────────────── */
 
 function WatchlistDetailPanel({ entry, account, mob }) {
@@ -1902,6 +1997,28 @@ function WatchlistDetailPanel({ entry, account, mob }) {
     if (e.stopPrice != null) breakToStop = Math.abs(brk - e.stopPrice);
     if (e.targetPrice != null) breakToTarget = Math.abs(e.targetPrice - brk);
   }
+
+  // Projected fire-time stop (V2 pivot_half_fib variants only — see
+  // computeProjectedStop above for variant gating + algorithm).
+  // The watchlist's stop_price is the looser classifier-time estimate;
+  // the engine recomputes on M10 fire to a tighter pivot-anchored stop.
+  // This projection approximates that fire-time value so the watchlist
+  // preview matches the live geometry (was: a NZDJPY watchlist preview
+  // suggested RR ~1.5 but the live position fired at RR > 5).
+  const projection = computeProjectedStop(e, account?.config);
+  const projStop = projection?.projectedStop ?? null;
+  let projectedRR = null;
+  if (projStop != null && brk != null && e.targetPrice != null) {
+    const projStopDist = Math.abs(brk - projStop);
+    const targDist = Math.abs(e.targetPrice - brk);
+    if (projStopDist > 0) projectedRR = targDist / projStopDist;
+  }
+  // Show both classifier RR and projected RR side-by-side only when
+  // they differ enough to matter; otherwise just the projected (more
+  // accurate) value.
+  const rrSpread = (rrRatio != null && projectedRR != null)
+    ? Math.abs(projectedRR - rrRatio) : 0;
+  const showBothRR = rrSpread > 0.5;
 
   // Setup age derived from scanTime to avoid clock skew
   let ageLabel = fmtAge(e.ageMinutes);
@@ -1960,7 +2077,14 @@ function WatchlistDetailPanel({ entry, account, mob }) {
             padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
           }}>Loading chart…</div>
         }>
-          <SetupChart entry={entry} height={mob ? 220 : 280} />
+          {/* Augment the entry with the projected fire-time stop so
+              SetupChart can render the amber "Proj. Stop" line. Pure
+              addition — original entry untouched, classifier stopPrice
+              still passed through. */}
+          <SetupChart
+            entry={projStop != null ? { ...entry, projectedStopPrice: projStop } : entry}
+            height={mob ? 220 : 280}
+          />
         </Suspense>
       </div>
 
@@ -2003,12 +2127,21 @@ function WatchlistDetailPanel({ entry, account, mob }) {
         <div style={sectionBox}>
           <div style={sectionTitle}>Risk (if entry fires at break)</div>
           <div style={fieldRow}>
-            <span style={fieldLabel}>Stop</span>
+            <span style={fieldLabel}>Stop {projStop != null && <span style={{ color: "#666", fontWeight: 400 }}>(classifier)</span>}</span>
             <span style={{ ...fieldVal, color: "#cf5b5b" }}>
               {fmtPrice(e.stopPrice)}
               {breakToStop != null && <span style={{ color: "#666", marginLeft: 6 }}>(−{fmtPrice(breakToStop)})</span>}
             </span>
           </div>
+          {projStop != null && (
+            <div style={fieldRow}>
+              <span style={fieldLabel}>Stop <span style={{ color: "#f59e0b", fontWeight: 600 }}>(projected)</span></span>
+              <span style={{ ...fieldVal, color: "#f59e0b" }}>
+                {fmtPrice(projStop)}
+                {brk != null && <span style={{ color: "#666", marginLeft: 6 }}>(−{fmtPrice(Math.abs(brk - projStop))})</span>}
+              </span>
+            </div>
+          )}
           <div style={fieldRow}>
             <span style={fieldLabel}>Target</span>
             <span style={{ ...fieldVal, color: "#22b89a" }}>
@@ -2019,7 +2152,16 @@ function WatchlistDetailPanel({ entry, account, mob }) {
           <div style={fieldRow}>
             <span style={fieldLabel}>RR at entry</span>
             <span style={fieldVal}>
-              {rrRatio != null ? (
+              {projectedRR != null ? (
+                <>
+                  <span style={{ color: "#f59e0b", fontWeight: 700 }}>{`${projectedRR.toFixed(2)} : 1`}</span>
+                  {showBothRR && rrRatio != null && (
+                    <span style={{ color: "#666", marginLeft: 6, fontSize: 10 }}>
+                      (classifier: {rrRatio.toFixed(2)})
+                    </span>
+                  )}
+                </>
+              ) : rrRatio != null ? (
                 <>
                   {`${rrRatio.toFixed(2)} : 1`}
                   {brkSource === "impulse_extreme" && (
@@ -2035,7 +2177,14 @@ function WatchlistDetailPanel({ entry, account, mob }) {
             <span style={fieldLabel}>Risk per trade</span>
             <span style={fieldVal}>{fmtUsd(riskUsd)} <span style={{ color: "#666" }}>({(riskPct * 100).toFixed(2)}% of {fmtUsd(balance)})</span></span>
           </div>
-          {account?.config?.stop_mode && (
+          {projStop != null ? (
+            <div style={{ fontSize: 10, color: "#666", marginTop: 6, fontStyle: "italic", lineHeight: 1.5 }}>
+              Projected stop assumes engine fires from current pullback pivot
+              ({projection.anchorSource === "fib_786_fallback" ? "fib 0.786 fallback — pullback hasn't formed yet" :
+                projection.anchorSource === "fib_786_capped" ? "capped at fib 0.786; setup near invalidation" :
+                "from M10 pullback low/high"}). Updates as new candles arrive.
+            </div>
+          ) : account?.config?.stop_mode && (
             <div style={{ fontSize: 10, color: "#555", marginTop: 6, fontStyle: "italic" }}>
               Note: V2 strategies may shift stop to pivot_half_fib at fire time.
             </div>
