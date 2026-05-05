@@ -1009,8 +1009,22 @@ function OpenPositions({ account, mob }) {
                   <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12, color: "#22b89a" }}>
                     {fmtPrice(p.takeProfit)}
                   </td>
-                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600, color: (p.unrealizedPnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b" }}>
-                    {p.unrealizedPnl != null ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}` : "—"}
+                  <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontWeight: 600, color: (p.unrealizedPnl ?? p.unrealizedPct ?? 0) >= 0 ? "#22b89a" : "#cf5b5b" }}>
+                    {/* Prefer the bridge's $ value; fall back to % move
+                        when the bridge response is null (transient on
+                        fresh fills + non-USD-quote pairs). */}
+                    {p.unrealizedPnl != null
+                      ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}`
+                      : p.unrealizedPct != null
+                        ? <span style={{ fontStyle: "italic", opacity: 0.85 }}>
+                            {p.unrealizedPct >= 0 ? "+" : ""}{p.unrealizedPct.toFixed(2)}%
+                            {p.unrealizedPips != null && (
+                              <span style={{ fontSize: 10, marginLeft: 4, color: "#666" }}>
+                                ({p.unrealizedPips >= 0 ? "+" : ""}{p.unrealizedPips.toFixed(1)}p)
+                              </span>
+                            )}
+                          </span>
+                        : "—"}
                   </td>
                 </tr>
                 {isOpen && (
@@ -1295,10 +1309,20 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
           <div style={sectionTitle}>P&L</div>
           <div style={fieldRow}>
             <span style={fieldLabel}>Unrealized</span>
-            <span style={{ ...fieldVal, color: (p.unrealizedPnl ?? 0) >= 0 ? "#22b89a" : "#cf5b5b", fontWeight: 700 }}>
+            <span style={{ ...fieldVal, color: (p.unrealizedPnl ?? p.unrealizedPct ?? 0) >= 0 ? "#22b89a" : "#cf5b5b", fontWeight: 700 }}>
               {p.unrealizedPnl != null
                 ? `${p.unrealizedPnl >= 0 ? "+" : ""}$${p.unrealizedPnl.toFixed(2)}`
-                : "—"}
+                : p.unrealizedPct != null
+                  ? <>
+                      <span style={{ fontStyle: "italic", opacity: 0.85 }}>
+                        {p.unrealizedPct >= 0 ? "+" : ""}{p.unrealizedPct.toFixed(2)}%
+                        {p.unrealizedPips != null && ` · ${p.unrealizedPips >= 0 ? "+" : ""}${p.unrealizedPips.toFixed(1)} pips`}
+                      </span>
+                      <span style={{ marginLeft: 6, fontSize: 10, color: "#666", fontStyle: "italic", fontWeight: 400 }}>
+                        ($ value pending broker)
+                      </span>
+                    </>
+                  : "—"}
             </span>
           </div>
           <div style={fieldRow}>

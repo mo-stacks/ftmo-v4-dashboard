@@ -562,12 +562,38 @@ export function useSupabaseData() {
         // engine pipeline starts persisting them; until then the dashboard
         // treats them as "same as live" and notes that trail-status detection
         // is pending.
-        const openPositions = (state.positions || []).map(p => ({
+        const openPositions = (state.positions || []).map(p => {
+          // Bridge can return unrealizedPnl=null transiently (fresh fill,
+          // quote-currency conversion not yet computed for non-USD pairs,
+          // bridge restart, etc). When that happens we fall back to a
+          // price-derived signal so the UI shows directional info instead
+          // of "—". % move is broker-spec-free; pips approximation uses
+          // 0.0001 for non-JPY forex and 0.01 for JPY pairs.
+          let unrealizedPct = null, unrealizedPips = null;
+          if (p.entryPrice != null && p.currentPrice != null && p.entryPrice !== 0) {
+            const isLong = p.side === "BUY";
+            const sign = isLong ? 1 : -1;
+            const diff = (p.currentPrice - p.entryPrice) * sign;
+            unrealizedPct = (diff / p.entryPrice) * 100;
+            // Pip approximation — only meaningful for forex; the UI gates
+            // on symbol-shape so we don't show pips for stocks/crypto/CFDs
+            const sym = (p.symbol || "").toUpperCase();
+            if (/^[A-Z]{6}$/.test(sym)) {
+              const pipSize = sym.endsWith("JPY") ? 0.01 : 0.0001;
+              unrealizedPips = diff / pipSize;
+            }
+          }
+          return {
           symbol: p.symbol,
           side: p.side,
           entryPrice: p.entryPrice,
           currentPrice: p.currentPrice,
           unrealizedPnl: p.unrealizedPnl != null ? Math.round(p.unrealizedPnl * 100) / 100 : null,
+          // Derived fallbacks — always populated when prices are present,
+          // even if the bridge's $ value is null. UI prefers $ when
+          // available, falls back to these.
+          unrealizedPct: unrealizedPct != null ? Math.round(unrealizedPct * 100) / 100 : null,
+          unrealizedPips: unrealizedPips != null ? Math.round(unrealizedPips * 10) / 10 : null,
           // Live (current) stop and target — updated by trailing
           stopLoss: p.stopLoss ?? null,
           takeProfit: p.takeProfit ?? null,
@@ -592,7 +618,8 @@ export function useSupabaseData() {
           // watchlist: { h4: [...], m10: [...] } with unix-seconds
           // t and o/h/l/c.
           candles: p.candles ?? null,
-        }));
+        };
+        });
 
         accountData[key] = {
           key,
