@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
 // 2026-05-02: raised 60s → 120s as part of the egress reduction pass.
-// The engine's downstream cadence (M10 scans, FTMO daily DD reset, etc.)
-// is well-aligned with 2-minute polls; users won't notice the slower
-// refresh and we cut Supabase egress in half.
-const REFRESH_INTERVAL = 120 * 1000;
+// 2026-05-05: raised 120s → 240s after egress audit found the
+// embedded-candles JSONB inside account_state was driving ~1.7 MB per
+// poll. Until the candles-split migration ships (Tier 2), halving the
+// poll cadence is the cheapest way back under the 5 GB/30-day Supabase
+// free-plan budget. Engine cadence (M10 scans, FTMO DD reset) tolerates
+// 4-min polling without UX regression. The forced-refresh handlers
+// (focus / visibilitychange / pageshow / online) already kick a fetch
+// when the user actively brings the tab forward, so the slower interval
+// only affects passive background refresh.
+const REFRESH_INTERVAL = 240 * 1000;
 
 // Balance-snapshot lookback. Was 90 days, dropped to 30 days to shrink
 // the first-load payload (most recent activity is what users care about;
