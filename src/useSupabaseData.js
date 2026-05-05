@@ -226,6 +226,34 @@ function classifyOutcome(t) {
   return "unknown";
 }
 
+// Merge a fresh value with the last-known-good cached value.
+// `freshIsValid` defaults to "non-null and non-NaN" — fields with a
+// real "0 is a valid value" semantic (e.g., dailyPnl = 0 means flat
+// for the day) opt out by passing a custom predicate. The cache is
+// updated with `fresh` whenever it's valid; otherwise the cached
+// value is returned. Returns null only if both fresh and cached are
+// invalid (true cold-start situation).
+function persistField(cache, key, fresh, freshIsValid) {
+  const valid = freshIsValid
+    ? freshIsValid(fresh)
+    : (fresh != null && !(typeof fresh === "number" && Number.isNaN(fresh)));
+  if (valid) {
+    cache[key] = fresh;
+    return fresh;
+  }
+  return cache[key] ?? null;
+}
+
+// Apply persistField across multiple keys on a single object.
+// Mutates `obj` in place — replaces null/missing fields with cached
+// values where available, and updates the cache with new values.
+function persistFieldsOn(cache, obj, fields) {
+  for (const f of fields) {
+    obj[f] = persistField(cache, f, obj[f]);
+  }
+  return obj;
+}
+
 export function useSupabaseData() {
   const [accounts, setAccounts] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -255,6 +283,19 @@ export function useSupabaseData() {
   //   event regardless of whether visibilitychange fires reliably
   const inFlightRef = useRef(false);
   const lastFetchAtRef = useRef(0);
+
+  // 2026-05-04 last-known-good persistence:
+  // Bridge transients (null unrealizedPnl on fresh fills, zero balance
+  // during broker disconnects, etc) used to blank the UI. This cache
+  // holds the last NON-NULL value we saw for each persisted field per
+  // position / per account. Subsequent fetches that return null fall
+  // back to the cached value rather than null. Survives polling cycles
+  // but resets on full page reload (intentional — avoids serving
+  // hours-old data on app reopen).
+  //
+  //   persistedRef.current.positions[`${variant}::${posId}`] = { unrealizedPnl, currentPrice, stopLoss, takeProfit, ... }
+  //   persistedRef.current.accounts[variant]                 = { balance, equity, dailyPnl, ... }
+  const persistedRef = useRef({ positions: {}, accounts: {} });
 
   const fetchData = useCallback(async () => {
     // Drop the call if a previous one is still pending. iOS can freeze
@@ -508,8 +549,28 @@ export function useSupabaseData() {
           };
         });
 
-        const currentBalance = state.balance || STARTING_BALANCE;
-        const currentEquity = state.equity || currentBalance;
+        // ─── Last-known-good persistence on account-level fields ────
+        // Bridge can briefly return null/0 for balance/equity during
+        // broker disconnects, publisher restarts, or just before the
+        // first cycle of a fresh engine boot. Without this, the UI
+        // would flash $0.00 / $100,000 (the STARTING_BALANCE fallback)
+        // for one cycle and recover. Layer the cache so we hold the
+        // last real value through the transient.
+        const aCache = persistedRef.current.accounts;
+        if (!aCache[key]) aCache[key] = {};
+        // For balances/equity: only "valid" if non-null AND > 0. The
+        // engine never has a legitimately-zero account; a 0 from supabase
+        // is always a publisher transient.
+        const positiveOnly = v => v != null && typeof v === "number" && v > 0;
+        const balRaw       = persistField(aCache[key], 'balance',           state.balance,           positiveOnly);
+        const eqRaw        = persistField(aCache[key], 'equity',            state.equity,            positiveOnly);
+        const dayStartRaw  = persistField(aCache[key], 'day_start_balance', state.day_start_balance, positiveOnly);
+        const trailingDdRaw= persistField(aCache[key], 'trailing_dd',       state.trailing_dd,       positiveOnly);
+        // Daily P&L: 0 is legit (flat for the day). Default predicate.
+        const dailyPnlRaw  = persistField(aCache[key], 'daily_pnl',         state.daily_pnl);
+
+        const currentBalance = balRaw || STARTING_BALANCE;
+        const currentEquity  = eqRaw  || currentBalance;
         if (currentBalance > peak) peak = currentBalance;
         const realizedPnl = Math.round((currentBalance - STARTING_BALANCE) * 100) / 100;
 
@@ -621,6 +682,30 @@ export function useSupabaseData() {
         };
         });
 
+        // ─── Last-known-good persistence on open positions ──────────
+        // For each position currently in the live list, layer its
+        // per-position cache (initializing if first sighting) over
+        // any null fields the bridge returned this cycle.
+        const pCache = persistedRef.current.positions;
+        const seenPosKeys = new Set();
+        for (const pos of openPositions) {
+          if (!pos.positionId) continue;
+          const cKey = `${key}::${pos.positionId}`;
+          seenPosKeys.add(cKey);
+          if (!pCache[cKey]) pCache[cKey] = {};
+          persistFieldsOn(pCache[cKey], pos, [
+            "unrealizedPnl", "unrealizedPct", "unrealizedPips",
+            "currentPrice", "stopLoss", "takeProfit",
+          ]);
+        }
+        // Evict cache entries for positions that have closed (no longer
+        // in the live list). Keeps the cache bounded over long sessions.
+        for (const cKey of Object.keys(pCache)) {
+          if (cKey.startsWith(`${key}::`) && !seenPosKeys.has(cKey)) {
+            delete pCache[cKey];
+          }
+        }
+
         accountData[key] = {
           key,
           label: meta.label,
@@ -664,16 +749,24 @@ export function useSupabaseData() {
             updated: state.updated_at,
             balance: currentBalance,
             equity: currentEquity,
-            dayStartBalance: state.day_start_balance || currentBalance,
+            // dayStartBalance / trailingDdFloor / dailyPnl all flow through
+            // the per-account persistence cache (see persistedRef above).
+            // Bridge transients (publisher restart, broker disconnect mid-poll,
+            // engine boot before first cycle completes) used to blank these
+            // and force the FTMO DD widgets to fall back to STARTING_BALANCE *
+            // 0.9, which produced false "DD floor jumped" displays. The cache
+            // holds the last real value so the widgets stay numerically stable
+            // through transients.
+            dayStartBalance: dayStartRaw || currentBalance,
             highestEodBalance: peak,
-            trailingDdFloor: state.trailing_dd || (STARTING_BALANCE * 0.9),
+            trailingDdFloor: trailingDdRaw || (STARTING_BALANCE * 0.9),
             // daily_pnl from supabase is signed (positive = profit, negative = loss).
             // The dashboard's "Daily Loss" indicator only counts losses against
             // the FTMO daily DD limit — profits don't consume the limit. So:
             //   dailyPnl: raw signed P&L (for informational display)
             //   dailyLoss: only the loss component (0 when profitable)
-            dailyPnl: state.daily_pnl || 0,
-            dailyLoss: Math.max(0, -(state.daily_pnl || 0)),
+            dailyPnl: dailyPnlRaw ?? 0,
+            dailyLoss: Math.max(0, -(dailyPnlRaw ?? 0)),
             dailyDdLimit: 5000,
             tradingPaused: false,
             // 2026-05-04 — these fields exist in the engine state file
