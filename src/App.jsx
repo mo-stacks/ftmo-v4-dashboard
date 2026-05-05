@@ -708,7 +708,33 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
 
 /* ── engine status section (per-account) ─────────────────────── */
 
-function EngineStatus({ account, mob }) {
+function EngineStatus({ account, mob, lastUpdated, refetch }) {
+  // Manual-refresh button state — flashes briefly so the user gets
+  // feedback that the click did something, even if Supabase round-
+  // trip is fast enough that nothing visibly changes.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefreshClick = async () => {
+    if (refreshing || !refetch) return;
+    setRefreshing(true);
+    try { await refetch(); } finally {
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  };
+  // Color-code page sync age. Stale => the dashboard isn't keeping up
+  // (often iOS PWA suspending the JS process). Clearly different from
+  // engine snapshot age, which is when the publisher last wrote state.
+  const ageMs = lastUpdated ? Date.now() - new Date(lastUpdated).getTime() : null;
+  const ageMin = ageMs != null ? Math.floor(ageMs / 60000) : null;
+  const syncColor =
+    ageMin == null ? "#666" :
+    ageMin < 3 ? "#22b89a" :
+    ageMin < 10 ? "#cfb95b" :
+    "#cf5b5b";
+  const syncLabel =
+    ageMin == null ? "—" :
+    ageMin < 1 ? "just now" :
+    ageMin === 1 ? "1m ago" :
+    `${ageMin}m ago`;
   if (!account?.engineState) {
     return (
       <>
@@ -722,14 +748,19 @@ function EngineStatus({ account, mob }) {
   const s = account.engineState;
 
   const trailingDdUsed = s.highestEodBalance - s.trailingDdFloor;
-  const trailingDdPct = trailingDdUsed > 0 ? ((s.highestEodBalance - s.equity) / trailingDdUsed * 100).toFixed(1) : "0";
+  // Clamp the "DD consumed" numerator at 0 so the bar reads 0% when
+  // equity is above the prior peak (i.e., we're not in any drawdown
+  // at all). Previously it could go negative and render as `-$447 / $10117`
+  // which was a confusing "DD usage is negative" display.
+  const trailingDdConsumed = Math.max(0, s.highestEodBalance - s.equity);
+  const trailingDdPct = trailingDdUsed > 0 ? (trailingDdConsumed / trailingDdUsed * 100).toFixed(1) : "0";
   const dailyDdPct = s.dailyDdLimit > 0 ? ((s.dailyLoss / s.dailyDdLimit) * 100).toFixed(1) : "0";
 
   return (
     <>
       <SectionHeader>Engine Status</SectionHeader>
 
-      {/* Status indicator */}
+      {/* Status indicator + freshness readout + manual refresh */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <span style={{
           display: "inline-flex", alignItems: "center", gap: 6,
@@ -741,12 +772,53 @@ function EngineStatus({ account, mob }) {
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
           {s.tradingPaused ? "TRADING PAUSED" : "ACTIVE"}
         </span>
+        {/* Engine snapshot age — when the publisher last wrote state.
+            If this lags, the publisher (or its cron / sleep window)
+            is behind. */}
         <span style={{ fontSize: 12, color: "#888" }}>
-          Updated {timeAgo(s.updated)}
+          Engine: {timeAgo(s.updated)}
         </span>
         <span style={{ fontSize: 11, color: "#555" }}>
           ({fmtTime(s.updated)})
         </span>
+        {/* Page-sync age — when this browser tab last successfully
+            fetched. If this lags but the engine is fresh, the dashboard
+            is stuck (typically iOS PWA suspending the JS process).
+            Color-coded: green < 3m, amber 3–10m, red > 10m. */}
+        <span style={{ fontSize: 12, color: syncColor, marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: syncColor, display: "inline-block" }} />
+          Page synced {syncLabel}
+        </span>
+        {refetch && (
+          <button
+            onClick={onRefreshClick}
+            disabled={refreshing}
+            aria-label="Refresh now"
+            title="Refresh now"
+            style={{
+              background: refreshing ? "#22b89a22" : "transparent",
+              border: `1px solid ${refreshing ? "#22b89a55" : "#22222e"}`,
+              borderRadius: 6,
+              padding: "4px 8px",
+              cursor: refreshing ? "wait" : "pointer",
+              color: refreshing ? "#22b89a" : "#888",
+              fontFamily: "inherit",
+              fontSize: 13,
+              lineHeight: 1,
+              transition: "all 0.15s",
+            }}
+          >
+            {/* Circular refresh glyph */}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ display: "block", animation: refreshing ? "ftmoSpin 0.6s linear infinite" : "none" }}>
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            <style>{`@keyframes ftmoSpin { to { transform: rotate(360deg); } }`}</style>
+          </button>
+        )}
       </div>
 
       {/* Next scan times */}
@@ -814,7 +886,7 @@ function EngineStatus({ account, mob }) {
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
               <span style={{ color: "#888" }}>Trailing DD</span>
               <span style={{ color: parseFloat(trailingDdPct) > 80 ? "#cf5b5b" : "#22b89a" }}>
-                ${(s.highestEodBalance - s.equity).toFixed(2)} / ${trailingDdUsed.toFixed(2)}
+                ${trailingDdConsumed.toFixed(2)} / ${trailingDdUsed.toFixed(2)}
               </span>
             </div>
             <div style={{ background: "#222", borderRadius: 4, height: 8, overflow: "hidden" }}>
@@ -2993,7 +3065,7 @@ function TradePerformance({ account, mob }) {
 
 /* ── account view (wraps all 4 sections) ─────────────────────── */
 
-function AccountView({ account, mob }) {
+function AccountView({ account, mob, lastUpdated, refetch }) {
   if (!account) return null;
   return (
     <>
@@ -3022,7 +3094,7 @@ function AccountView({ account, mob }) {
         <StatusPill status={account.status} />
       </div>
 
-      <ErrorBoundary label="Engine Status"><EngineStatus account={account} mob={mob} /></ErrorBoundary>
+      <ErrorBoundary label="Engine Status"><EngineStatus account={account} mob={mob} lastUpdated={lastUpdated} refetch={refetch} /></ErrorBoundary>
       <ErrorBoundary label="Open Positions"><OpenPositions account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Watchlist"><Watchlist account={account} mob={mob} /></ErrorBoundary>
       <ErrorBoundary label="Trade History"><TradeHistory account={account} mob={mob} /></ErrorBoundary>
@@ -3037,7 +3109,7 @@ function AccountView({ account, mob }) {
 export default function App() {
   const mob = useIsMobile();
   const [activeTab, setActiveTab] = useState("main");
-  const { accounts: ACCOUNTS, loading, lastUpdated: LAST_UPDATED, error, ACCOUNT_KEYS } = useSupabaseData();
+  const { accounts: ACCOUNTS, loading, lastUpdated: LAST_UPDATED, error, ACCOUNT_KEYS, refetch } = useSupabaseData();
   // Trade alert hook — diffs each Supabase poll, emits browser
   // notifications + in-page toasts + sound for entries / modifies / closes
   const alerts = useTradeAlerts(ACCOUNTS);
@@ -3105,7 +3177,7 @@ export default function App() {
         <ErrorBoundary label={isMain ? "Main Dashboard" : `Account: ${currentAccount?.label || "?"}`}>
           {isMain
             ? <MainDashboard mob={mob} onSelectAccount={setActiveTab} ACCOUNTS={ACCOUNTS} ACCOUNT_KEYS={ACCOUNT_KEYS} />
-            : <AccountView account={currentAccount} mob={mob} />
+            : <AccountView account={currentAccount} mob={mob} lastUpdated={LAST_UPDATED} refetch={refetch} />
           }
         </ErrorBoundary>
 

@@ -247,7 +247,23 @@ export function useSupabaseData() {
   const tradesCacheRef = useRef([]);
   const lastTradeCreatedRef = useRef(null);
 
+  // 2026-05-04 iOS-PWA staleness fix:
+  // - In-flight guard so a fetch that got suspended mid-flight by iOS
+  //   process freeze doesn't block subsequent invocations forever
+  // - Last-fetch wall-clock time so we can detect "interval is dead but
+  //   page is alive" and force a refresh on the next visibility/focus
+  //   event regardless of whether visibilitychange fires reliably
+  const inFlightRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+
   const fetchData = useCallback(async () => {
+    // Drop the call if a previous one is still pending. iOS can freeze
+    // a fetch mid-flight without ever resolving its promise; without
+    // this guard, every visibility/focus event would queue another
+    // fetch behind the dead one. The fetch we drop here is replaced by
+    // the next interval tick.
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     try {
       // Account state is small (6 rows) and changes constantly, so
       // refetch it in full each tick. Trade and snapshot fetches are
@@ -674,26 +690,73 @@ export function useSupabaseData() {
 
       setAccounts(accountData);
       setLastUpdated(new Date().toISOString());
+      lastFetchAtRef.current = Date.now();
       setError(null);
     } catch (err) {
       console.error('Supabase fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     fetchData();
     const id = setInterval(fetchData, REFRESH_INTERVAL);
-    const onFocus = () => fetchData();
-    const onVisible = () => { if (!document.hidden) fetchData(); };
+
+    // Foreground / visibility handlers — fire fetchData when the user
+    // brings the dashboard back to the front. Multiple events because
+    // browsers (especially iOS Safari + installed PWAs) are inconsistent
+    // about which fires when:
+    //   - focus      — desktop, when the window regains focus
+    //   - visibilitychange — most browsers when tab becomes visible
+    //   - pageshow   — fires on bfcache restore (iOS uses bfcache aggressively
+    //     for installed PWAs; visibilitychange isn't always fired in this case)
+    //   - online     — when network reconnects after being offline
+    // All gated on lastFetchAt so we don't hammer Supabase with rapid-fire
+    // re-fetches if multiple events fire close together.
+    const FORCE_REFRESH_THRESHOLD_MS = 30 * 1000; // 30s — if a fetch ran
+                                                  // within the last 30s,
+                                                  // skip the redundant one
+    const maybeRefetch = (reason) => {
+      const sinceLast = Date.now() - lastFetchAtRef.current;
+      if (sinceLast < FORCE_REFRESH_THRESHOLD_MS) return;
+      // Optional: console.debug for diagnosing on-device staleness
+      // console.debug(`[ftmo-v4] refetch trigger=${reason} sinceLast=${sinceLast}ms`);
+      fetchData();
+    };
+    const onFocus = () => maybeRefetch('focus');
+    const onVisible = () => { if (!document.hidden) maybeRefetch('visibilitychange'); };
+    const onPageShow = (e) => { if (e.persisted) fetchData(); }; // bfcache restore — always force
+    const onOnline = () => maybeRefetch('online');
+
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('online', onOnline);
+
+    // Watchdog — every 30s while the page is visible, check whether
+    // the main interval has actually been firing. iOS Safari throttles
+    // background timers and can leave the interval in a broken state
+    // after resume. If lastFetchAt is older than 1.5× our normal cadence
+    // AND the page is visible, force a refresh.
+    const STALENESS_CHECK_MS = 30 * 1000;
+    const watchdog = setInterval(() => {
+      if (document.hidden) return;
+      const sinceLast = Date.now() - lastFetchAtRef.current;
+      if (sinceLast > REFRESH_INTERVAL * 1.5) {
+        fetchData();
+      }
+    }, STALENESS_CHECK_MS);
+
     return () => {
       clearInterval(id);
+      clearInterval(watchdog);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('online', onOnline);
     };
   }, [fetchData]);
 
