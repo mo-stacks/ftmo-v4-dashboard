@@ -850,8 +850,24 @@ function EngineStatus({ account, mob, lastUpdated, refetch }) {
       <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2,minmax(0,1fr))" : "repeat(auto-fit,minmax(170px,1fr))", gap: 10, marginBottom: 14 }}>
         <Card label="Balance" value={`$${s.balance.toLocaleString()}`} sub={`Day start: $${s.dayStartBalance.toLocaleString()}`} color="#7eb4fa" />
         <Card label="Equity" value={`$${s.equity.toLocaleString()}`} sub={`P&L: $${(s.equity - s.dayStartBalance).toFixed(2)}`} color={s.equity >= s.dayStartBalance ? "#22b89a" : "#cf5b5b"} />
-        <Card label="Activity" value={`${s.h4Scans} / ${s.m10Scans}`} sub={`H4 scans / M10 scans`} color="#7eb4fa" />
-        <Card label="Trades Placed" value={s.tradesPlaced} sub="Since engine start" color="#a78bfa" />
+        <Card
+          label="Activity"
+          value={s.h4Scans != null && s.m10Scans != null
+            ? `${s.h4Scans} / ${s.m10Scans}`
+            : "—"}
+          sub={s.h4Scans != null
+            ? "H4 / M10 scans since engine start"
+            : "Cumulative counters pending publisher update"}
+          color="#7eb4fa"
+        />
+        <Card
+          label="Trades Placed"
+          value={s.tradesPlaced ?? 0}
+          sub={s.tradesPlacedFromEngine
+            ? "Since engine start"
+            : "Open + closed (engine counter pending)"}
+          color="#a78bfa"
+        />
       </div>
 
       {/* Prop firm drawdown bars */}

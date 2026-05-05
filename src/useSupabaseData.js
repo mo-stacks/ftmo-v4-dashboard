@@ -649,9 +649,22 @@ export function useSupabaseData() {
             dailyLoss: Math.max(0, -(state.daily_pnl || 0)),
             dailyDdLimit: 5000,
             tradingPaused: false,
-            h4Scans: 0,
-            m10Scans: 0,
-            tradesPlaced: variantTrades.length,
+            // 2026-05-04 — these fields exist in the engine state file
+            // (watchlist_state_<variant>.json) as h4_scans / m10_scans /
+            // trades_placed cumulative counters, but the publisher
+            // doesn't ship them yet (see SESSION_HANDOFF_publisher_engine_counters.md).
+            // Read defensively: prefer the engine value when present,
+            // else null for the scan counts (UI renders "—") and a
+            // dashboard-side approximation for trades_placed (open + closed).
+            // The approximation matches the user's intuition ("trades I
+            // can see on the dashboard") but is slightly off if the engine
+            // started with positions already open from a prior session.
+            h4Scans: state.h4_scans ?? null,
+            m10Scans: state.m10_scans ?? null,
+            tradesPlaced: state.trades_placed != null
+              ? state.trades_placed
+              : (openPositions.length + variantTrades.length),
+            tradesPlacedFromEngine: state.trades_placed != null,
             nextH4Scan: state.next_h4_scan,
             watchlist,
             recentRemovals: [],
