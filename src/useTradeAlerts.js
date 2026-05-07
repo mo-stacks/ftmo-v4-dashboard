@@ -20,8 +20,87 @@
 */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { supabase } from "./supabaseClient";
 
 const STORAGE_KEY = "ftmo-v4-alerts";
+
+// VAPID public key (B64URL form) — generated 2026-05-07. The matching
+// private PEM lives in /Users/mmmacbook/Projects/FTMO_V4/.env.vapid on
+// the publisher host. See tools/push_notifications.py for the send flow.
+// If this key is regenerated, the dashboard must redeploy AND every
+// existing subscription is invalidated (push_subscriptions table will
+// see 410 GONE on next push and auto-disable).
+const VAPID_PUBLIC_KEY_B64URL =
+  "BABEuM4Lxxlozi4h6MFKJFofkekBC_k9pepnX70J9kqRh3olj8hApcg7q7u0JieiJlOC4F7sXmmqaA5wvg0EBpg";
+
+// Convert URL-safe base64 → Uint8Array for the PushSubscriptionOptions.
+function urlBase64ToUint8Array(b64) {
+  const padding = "=".repeat((4 - (b64.length % 4)) % 4);
+  const base64 = (b64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+// Subscribe (or refresh) the browser's push subscription and store it
+// in Supabase. Idempotent — if already subscribed with the same
+// endpoint, the upsert is a no-op (UNIQUE constraint on endpoint).
+async function subscribeToWebPush() {
+  if (typeof window === "undefined") return null;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    console.warn("[push] service worker / push not supported");
+    return null;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY_B64URL),
+      });
+    }
+    if (!sub) return null;
+
+    // Extract keys for backend encryption (p256dh + auth)
+    const json = sub.toJSON();
+    const endpoint = json.endpoint;
+    const p256dh = json.keys?.p256dh;
+    const auth = json.keys?.auth;
+    if (!endpoint || !p256dh || !auth) {
+      console.warn("[push] subscription missing keys", json);
+      return null;
+    }
+
+    // Upsert into Supabase. ON CONFLICT (endpoint) DO NOTHING via the
+    // table's UNIQUE constraint — second call from same browser is a
+    // no-op. user_agent helps disambiguate devices in the table.
+    const { error } = await supabase
+      .from("push_subscriptions")
+      .upsert(
+        {
+          endpoint,
+          p256dh,
+          auth,
+          user_agent: navigator.userAgent.slice(0, 200),
+          disabled: false,
+          consecutive_failures: 0,
+          last_used_at: new Date().toISOString(),
+        },
+        { onConflict: "endpoint" }
+      );
+    if (error) {
+      console.warn("[push] subscription upsert failed:", error);
+      return null;
+    }
+    console.log("[push] subscription registered, endpoint:", endpoint.slice(0, 60) + "...");
+    return sub;
+  } catch (err) {
+    console.warn("[push] subscribeToWebPush failed:", err);
+    return null;
+  }
+}
 
 const DEFAULT_SETTINGS = {
   enabled: true,           // master switch (in-app toast + browser if perm granted)
@@ -254,10 +333,27 @@ export function useTradeAlerts(accounts) {
       if (result === "granted") {
         // Auto-enable browser notifications once permission granted
         setSettings({ browser: true });
+        // Also subscribe to web-push so the backend can deliver alerts
+        // when the PWA is closed. Fire-and-forget; failure is logged
+        // but doesn't block the in-page notification path.
+        subscribeToWebPush().catch(err =>
+          console.warn("[push] background subscribe failed:", err));
       }
       return result;
     } catch (_) { return "denied"; }
   }, [setSettings]);
+
+  // On mount, if permission is already granted (returning user) AND
+  // settings.browser is enabled, ensure the push subscription is current.
+  // iOS rotates subscriptions over time; this keeps Supabase in sync.
+  useEffect(() => {
+    if (permission === "granted" && settings.browser) {
+      subscribeToWebPush().catch(err =>
+        console.warn("[push] mount-time refresh failed:", err));
+    }
+    // Only run on permission/browser-setting changes, not every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permission, settings.browser]);
 
   const markAllRead = useCallback(() => setUnread(0), []);
   const clearEvents = useCallback(() => { setEvents([]); setUnread(0); }, []);

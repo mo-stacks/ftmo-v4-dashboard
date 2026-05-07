@@ -1,16 +1,21 @@
-/* Service worker for ICS V1 dashboard PWA.
+/* Service worker for FTMO V4 dashboard PWA.
  *
- * Minimal: satisfies the install-eligibility requirement for "Add to Home
- * Screen" on iOS and Android, plus a network-first fetch handler so the
- * app stays fresh on every load (this dashboard is read-only data, no
- * offline mode needed).
- *
- * Future: when web-push is wired, push event listener goes here. For now
- * notifications fire from the in-page useTradeAlerts hook while the PWA
- * is open / recently active.
+ * Active features (post 2026-05-07):
+ * - "Add to Home Screen" install-eligibility for iOS 16.4+ / Android.
+ * - Network-first fetch (no caching — dashboard data must stay live).
+ * - Web-push handler for backend-delivered notifications when the PWA
+ *   is closed. Push subscription registered via useTradeAlerts.js after
+ *   user grants Notification permission. Backend send via
+ *   tools/push_notifications.py running in the publisher cron.
+ * - Notification click → focus an existing PWA window or reopen.
+ * - pushsubscriptionchange handler — iOS rotates subscriptions
+ *   periodically; we re-subscribe and update Supabase.
  */
 
-const VERSION = "ics-v1-2026-05-04";
+// Bump VERSION on every meaningful SW change so iOS re-registers and
+// activates fresh code. Without bumping, an existing install keeps
+// running the old SW indefinitely on iOS.
+const VERSION = "ftmo-v4-2026-05-07-webpush";
 
 self.addEventListener("install", (event) => {
   // Activate immediately on install — no waiting room
@@ -70,4 +75,49 @@ self.addEventListener("notificationclick", (event) => {
       return self.clients.openWindow("/");
     })
   );
+});
+
+// 2026-05-07: handle subscription rotation. iOS (and other push services)
+// periodically refresh subscription tokens. Without re-subscribing, the
+// stored endpoint in Supabase becomes invalid and pushes start returning
+// 410 GONE. The push_notifications.py module auto-disables those, but
+// catching the rotation here lets us update Supabase BEFORE pushes fail.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  console.log("[sw] pushsubscriptionchange — re-subscribing");
+  event.waitUntil((async () => {
+    // Re-subscribe with the same VAPID public key. Note: VAPID public
+    // key is duplicated here from useTradeAlerts.js because SW has no
+    // module sharing with the React app. If the key is rotated, both
+    // copies must be updated.
+    const VAPID_PUBLIC_KEY_B64URL =
+      "BABEuM4Lxxlozi4h6MFKJFofkekBC_k9pepnX70J9kqRh3olj8hApcg7q7u0JieiJlOC4F7sXmmqaA5wvg0EBpg";
+    const padding = "=".repeat((4 - (VAPID_PUBLIC_KEY_B64URL.length % 4)) % 4);
+    const base64 = (VAPID_PUBLIC_KEY_B64URL + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = self.atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+
+    try {
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: arr,
+      });
+      const json = newSub.toJSON();
+      // Send to dashboard so it can update Supabase. SW can't import
+      // from the React app, so we post a message to any open clients
+      // that will handle the Supabase upsert. If no clients are open,
+      // the next dashboard open will re-subscribe via the mount-time
+      // refresh in useTradeAlerts.js.
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const c of clients) {
+        c.postMessage({
+          type: "PUSH_SUBSCRIPTION_CHANGED",
+          subscription: { endpoint: json.endpoint, keys: json.keys },
+        });
+      }
+      console.log("[sw] re-subscribed:", json.endpoint.slice(0, 60) + "...");
+    } catch (err) {
+      console.warn("[sw] pushsubscriptionchange re-subscribe failed:", err);
+    }
+  })());
 });
