@@ -754,7 +754,17 @@ function EngineStatus({ account, mob, lastUpdated, refetch }) {
   // which was a confusing "DD usage is negative" display.
   const trailingDdConsumed = Math.max(0, s.highestEodBalance - s.equity);
   const trailingDdPct = trailingDdUsed > 0 ? (trailingDdConsumed / trailingDdUsed * 100).toFixed(1) : "0";
-  const dailyDdPct = s.dailyDdLimit > 0 ? ((s.dailyLoss / s.dailyDdLimit) * 100).toFixed(1) : "0";
+  // 2026-05-06 — equity-based daily-loss + null handling (per
+  // SESSION_HANDOFF_dashboard_equity_based_dd_displays). dailyLoss
+  // can be null when the publisher's equity_is_approximate defensive
+  // layer fired and the persistence cache had no last-known-good
+  // value. In that case render "—" rather than fall back to
+  // balance-based math (which would understate the FTMO daily-loss
+  // consumption).
+  const dailyLossKnown = s.dailyLoss != null;
+  const dailyDdPct = (dailyLossKnown && s.dailyDdLimit > 0)
+    ? ((s.dailyLoss / s.dailyDdLimit) * 100).toFixed(1)
+    : null;
 
   return (
     <>
@@ -874,28 +884,48 @@ function EngineStatus({ account, mob, lastUpdated, refetch }) {
       <div style={{ background: "#13131c", borderRadius: 10, padding: 16, border: "1px solid #22222e" }}>
         <h3 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 12px", color: "#ccc" }}>Drawdown Limits</h3>
         <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: 16 }}>
-          {/* Daily DD */}
+          {/* Daily DD — equity-MTM (2026-05-06). Numbers come from
+              equity-day_start, matching FTMO's real-time enforcement. */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
               <span style={{ color: "#888" }}>Daily Loss</span>
-              <span style={{ color: parseFloat(dailyDdPct) > 80 ? "#cf5b5b" : "#22b89a" }}>
-                ${s.dailyLoss.toFixed(2)} / ${s.dailyDdLimit.toFixed(2)}
+              <span style={{ color: dailyDdPct != null && parseFloat(dailyDdPct) > 80 ? "#cf5b5b" : "#22b89a" }}>
+                {dailyLossKnown
+                  ? `$${s.dailyLoss.toFixed(2)} / $${s.dailyDdLimit.toFixed(2)}`
+                  : `— / $${s.dailyDdLimit.toFixed(2)}`}
               </span>
             </div>
             <div style={{ background: "#222", borderRadius: 4, height: 8, overflow: "hidden" }}>
               <div style={{
-                background: parseFloat(dailyDdPct) > 80 ? "#cf5b5b" : parseFloat(dailyDdPct) > 50 ? "#cfb95b" : "#22b89a",
-                height: "100%", width: `${Math.min(100, parseFloat(dailyDdPct))}%`, borderRadius: 4, transition: "width 0.3s",
+                background: (dailyDdPct != null && parseFloat(dailyDdPct) > 80) ? "#cf5b5b"
+                          : (dailyDdPct != null && parseFloat(dailyDdPct) > 50) ? "#cfb95b"
+                          : "#22b89a",
+                height: "100%",
+                width: `${dailyDdPct != null ? Math.min(100, parseFloat(dailyDdPct)) : 0}%`,
+                borderRadius: 4, transition: "width 0.3s",
               }} />
             </div>
             <div style={{ fontSize: 10, color: "#555", marginTop: 2, display: "flex", justifyContent: "space-between" }}>
-              <span>{dailyDdPct}% of daily limit used</span>
-              {s.dailyPnl != null && (
-                <span style={{ color: s.dailyPnl >= 0 ? "#22b89a" : "#cf5b5b" }}>
-                  Daily P&L: {s.dailyPnl >= 0 ? "+" : ""}${s.dailyPnl.toFixed(2)}
-                </span>
-              )}
+              <span>{dailyDdPct != null ? `${dailyDdPct}%` : "—%"} of daily limit used</span>
+              <span style={{
+                color: s.dailyPnl == null ? "#666"
+                     : s.dailyPnl >= 0 ? "#22b89a"
+                     : "#cf5b5b"
+              }}>
+                Daily P&L: {s.dailyPnl == null
+                  ? "—"
+                  : `${s.dailyPnl >= 0 ? "+" : ""}$${s.dailyPnl.toFixed(2)}`}
+              </span>
             </div>
+            {/* Realized-today subtitle (2026-05-06) — preserves the
+                balance-based "closed trades only" number for context
+                alongside the equity-MTM headline. */}
+            {s.dailyPnlRealized != null && s.dailyPnl != null
+              && Math.abs(s.dailyPnlRealized - s.dailyPnl) > 0.01 && (
+              <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
+                Realized today: {s.dailyPnlRealized >= 0 ? "+" : ""}${s.dailyPnlRealized.toFixed(2)}
+              </div>
+            )}
           </div>
           {/* Trailing DD */}
           <div>

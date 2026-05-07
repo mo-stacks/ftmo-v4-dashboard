@@ -766,13 +766,40 @@ export function useSupabaseData() {
             dayStartBalance: dayStartRaw || currentBalance,
             highestEodBalance: peak,
             trailingDdFloor: trailingDdRaw || (STARTING_BALANCE * 0.9),
-            // daily_pnl from supabase is signed (positive = profit, negative = loss).
-            // The dashboard's "Daily Loss" indicator only counts losses against
-            // the FTMO daily DD limit — profits don't consume the limit. So:
-            //   dailyPnl: raw signed P&L (for informational display)
-            //   dailyLoss: only the loss component (0 when profitable)
-            dailyPnl: dailyPnlRaw ?? 0,
-            dailyLoss: Math.max(0, -(dailyPnlRaw ?? 0)),
+            // 2026-05-06 — equity-based daily P&L / daily-loss (per
+            // SESSION_HANDOFF_dashboard_equity_based_dd_displays). FTMO
+            // enforces daily-loss against EQUITY in real time (floating
+            // P&L counts), not balance. The publisher computes
+            // daily_pnl = balance - day_start_balance which mismatches
+            // FTMO's view whenever there's open floating P&L. We
+            // recompute client-side: dailyPnl = equity - day_start.
+            //
+            // Null handling: when the publisher writes equity = NULL
+            // (its equity_is_approximate defensive layer when bridge
+            // spot data is cold), eqRaw will resolve to the persistence
+            // cache's last-known-good. If even that is missing, eqRaw
+            // is null and we publish dailyPnl = null. The render sites
+            // show "—" rather than fall back to balance-based math.
+            //
+            // dailyPnlRealized retains the publisher's balance-based
+            // value for the optional "Realized today" subtitle —
+            // operators sometimes want to see the closed-trades-only
+            // number alongside the FTMO-aligned MTM headline.
+            ...((() => {
+              const dayStart = dayStartRaw;
+              const haveBoth = (eqRaw != null && dayStart != null);
+              const dailyPnlMtm = haveBoth
+                ? Math.round((eqRaw - dayStart) * 100) / 100
+                : null;
+              const dailyLossMtm = haveBoth
+                ? Math.round(Math.max(0, dayStart - eqRaw) * 100) / 100
+                : null;
+              return {
+                dailyPnl: dailyPnlMtm,                    // equity-MTM (FTMO-aligned); null when equity unknown
+                dailyLoss: dailyLossMtm,                  // null when equity unknown — render as "—"
+                dailyPnlRealized: dailyPnlRaw ?? null,    // publisher's balance-based realized component
+              };
+            })()),
             dailyDdLimit: 5000,
             tradingPaused: false,
             // 2026-05-04 — these fields exist in the engine state file
