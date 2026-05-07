@@ -2463,14 +2463,27 @@ function Watchlist({ account, mob }) {
   const ready    = watchlist.filter(e => (e.barsElapsed || 0) >= gate);
   const building = watchlist.filter(e => (e.barsElapsed || 0) <  gate);
 
-  // Symbols that already have open positions (can't double up)
-  const openSymbols = new Set((account.openPositions || []).map(p => p.symbol));
+  // Per-symbol open-position counts. Under the per-symbol risk cap
+  // deployed 2026-05-07 (D-031), multiple positions per symbol are
+  // allowed up to combined 1.6% balance risk = 2 positions at 0.8%
+  // per-trade risk. Pre-deploy: ANY open position blocked the symbol.
+  // See plan_per_symbol_risk_cap_2026_05_07.md.
+  const openSymbolCounts = new Map();
+  for (const p of (account.openPositions || [])) {
+    openSymbolCounts.set(p.symbol, (openSymbolCounts.get(p.symbol) || 0) + 1);
+  }
+  // Max concurrent per symbol = MAX_PER_SYMBOL_RISK_PCT / RISK_PCT
+  // = 0.016 / 0.008 = 2. Hardcoded for now; ideally publisher forwards
+  // both fields and dashboard derives. TODO: make config-driven.
+  const MAX_CONCURRENT_PER_SYMBOL = 2;
 
   // Render a single watchlist row. Extracted so we can call it for
   // each tier independently and keep priority-queue numbering
   // continuous across the tier boundary (e.g. ready=1..3, building=4..7).
   const renderRow = (e, displayIdx) => {
-    const blocked = openSymbols.has(e.symbol);
+    const openCount = openSymbolCounts.get(e.symbol) || 0;
+    const hasOpen = openCount > 0;
+    const blocked = openCount >= MAX_CONCURRENT_PER_SYMBOL;
     const rowKey = `${e.symbol}-${e.scanTime || displayIdx}`;
     const isOpen = expanded.has(rowKey);
     const toggle = () => {
@@ -2489,7 +2502,7 @@ function Watchlist({ account, mob }) {
           aria-expanded={isOpen}
           style={{
             borderBottom: isOpen ? "none" : "1px solid #1a1a26",
-            opacity: blocked ? 0.45 : 1,
+            opacity: blocked ? 0.45 : (hasOpen ? 0.75 : 1),
             cursor: "pointer",
             background: isOpen ? "#22223344" : "transparent",
             transition: "background 0.15s",
@@ -2501,7 +2514,7 @@ function Watchlist({ account, mob }) {
             {isOpen ? "▾" : "▸"}
           </td>
           <td style={{ padding: "8px 10px", color: "#7eb4fa", fontWeight: 700, fontSize: 14 }}>{displayIdx + 1}</td>
-          <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{blocked ? " *" : ""}</td>
+          <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{hasOpen ? ` (${openCount})` : ""}</td>
           <td style={{ padding: "8px 10px" }}>
             <span style={{ color: e.direction === "bullish" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
               {e.direction === "bullish" ? "LONG" : "SHORT"}
@@ -2526,7 +2539,7 @@ function Watchlist({ account, mob }) {
           <td style={{ padding: "8px 10px", fontSize: 12 }}>{e.pullbackDepth != null ? `${(e.pullbackDepth * 100).toFixed(1)}%` : "—"}</td>
           <td style={{ padding: "8px 10px" }}>
             <span style={{ background: blocked ? "#cf5b5b22" : "#cfb95b22", color: blocked ? "#cf5b5b" : "#cfb95b", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-              {blocked ? "BLOCKED" : e.status}
+              {blocked ? `BLOCKED (${openCount}/${MAX_CONCURRENT_PER_SYMBOL})` : e.status}
             </span>
           </td>
         </tr>
@@ -2621,7 +2634,7 @@ function Watchlist({ account, mob }) {
             </table>
           </div>
           <div style={{ padding: "6px 10px", borderTop: "1px solid #1a1a26", fontSize: 10, color: "#555", textAlign: "center" }}>
-            Sorted by quality score within each tier · click any row for setup detail · * = symbol has open position (blocked)
+            Sorted by quality score within each tier · click any row for setup detail · (N) = N positions already open on symbol · BLOCKED = at per-symbol risk cap
           </div>
         </div>
       )}
