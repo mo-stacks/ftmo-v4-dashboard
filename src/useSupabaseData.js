@@ -20,6 +20,28 @@ const SNAPSHOT_WINDOW_DAYS = 30;
 
 const STARTING_BALANCE = 100000;
 
+// ─── Direction normalization ──────────────────────────────────────────
+// The engine, bridge, publisher, and broker each speak a different
+// dialect for trade direction. Supabase trade_history.direction has been
+// observed with at least 4 distinct values: 'long', 'short', 'buy',
+// 'sell' (plus the engine-state 'bullish'/'bearish' for watchlist rows).
+//
+// Render sites in App.jsx check `=== "bullish"` to decide LONG vs SHORT.
+// Without normalization, ANY row with direction='long' or 'buy' rendered
+// as SHORT — confirmed live for USDCAD pid 5386049 on 2026-05-07
+// (engine wrote 'long', dashboard rendered SHORT).
+//
+// Normalize at the data-fetch boundary so render layers see exactly
+// {"bullish", "bearish", null}. Long-term fix is canonical normalization
+// at the publisher write side; this is the dashboard-side fast fix.
+function normalizeDirection(raw) {
+  if (raw == null) return null;
+  const v = String(raw).toLowerCase();
+  if (v === "bullish" || v === "long" || v === "buy") return "bullish";
+  if (v === "bearish" || v === "short" || v === "sell") return "bearish";
+  return raw; // unknown value — surface the original so the discrepancy is visible
+}
+
 // Explicit column list for trade_history fetches. Excludes the `candles`
 // JSONB so the bulk fetch doesn't pull ~30 KB of OHLC per row × 500 rows
 // every refresh. Candles are fetched on-demand by TradeDetailPanel when
@@ -430,7 +452,10 @@ export function useSupabaseData() {
             ts: t.exit_time,
             d: t.exit_time ? t.exit_time.substring(0, 10) : "",
             sym: t.symbol,
-            dir: t.direction,
+            // Normalize direction to {"bullish","bearish"} — Supabase has
+            // 4+ distinct encodings ('long','short','buy','sell','bullish').
+            // See normalizeDirection() above for full rationale.
+            dir: normalizeDirection(t.direction),
             mode: t.setup_type || "",
             entry: t.entry_price,
             exit: t.exit_price,
@@ -587,7 +612,8 @@ export function useSupabaseData() {
         const watchlist = (state.watchlist || []).map(e => ({
           // Core (already in publish_to_supabase wl_json)
           symbol: e.symbol,
-          direction: e.direction,
+          // Normalize direction (engine/publisher dialects vary).
+          direction: normalizeDirection(e.direction),
           setupType: e.setupType,
           qualityScore: e.qualityScore,
           barsElapsed: e.barsElapsed,
