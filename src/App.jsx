@@ -2445,8 +2445,137 @@ function Watchlist({ account, mob }) {
   // When a position slot opens, the highest-scored entry fires first.
   const watchlist = [...rawWatchlist].sort((a, b) => (b.qualityScore || 0) - (a.qualityScore || 0));
 
+  // ─── Tier the queue by search_start_gate (added 2026-05-07) ────────
+  // The engine's `search_start_gate` is the minimum number of M10 bars
+  // a setup must be observed in pending state before it becomes
+  // eligible to fire on a break. Setups with `barsElapsed >= gate`
+  // will execute the moment price hits the candidate break level —
+  // these are the ones an investor / operator actually wants to watch.
+  // Setups below the gate are still maturing; they CAN'T fire yet
+  // even if the break happens.
+  //
+  // Gate value is per-variant in VARIANT_CONFIG (Challenge has it
+  // explicitly = 100 as of 2026-04-30; engine deployed gate=100
+  // universally on that date). Fallback to 100 for any variant that
+  // doesn't carry the field, which is the right default given the
+  // 2026-04-30 universal deploy.
+  const gate = account.config?.search_start_gate ?? 100;
+  const ready    = watchlist.filter(e => (e.barsElapsed || 0) >= gate);
+  const building = watchlist.filter(e => (e.barsElapsed || 0) <  gate);
+
   // Symbols that already have open positions (can't double up)
   const openSymbols = new Set((account.openPositions || []).map(p => p.symbol));
+
+  // Render a single watchlist row. Extracted so we can call it for
+  // each tier independently and keep priority-queue numbering
+  // continuous across the tier boundary (e.g. ready=1..3, building=4..7).
+  const renderRow = (e, displayIdx) => {
+    const blocked = openSymbols.has(e.symbol);
+    const rowKey = `${e.symbol}-${e.scanTime || displayIdx}`;
+    const isOpen = expanded.has(rowKey);
+    const toggle = () => {
+      const next = new Set(expanded);
+      if (isOpen) next.delete(rowKey);
+      else next.add(rowKey);
+      setExpanded(next);
+    };
+    return (
+      <Fragment key={rowKey}>
+        <tr
+          onClick={toggle}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
+          aria-expanded={isOpen}
+          style={{
+            borderBottom: isOpen ? "none" : "1px solid #1a1a26",
+            opacity: blocked ? 0.45 : 1,
+            cursor: "pointer",
+            background: isOpen ? "#22223344" : "transparent",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(ev) => { if (!isOpen) ev.currentTarget.style.background = "#22223322"; }}
+          onMouseLeave={(ev) => { if (!isOpen) ev.currentTarget.style.background = "transparent"; }}
+        >
+          <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
+            {isOpen ? "▾" : "▸"}
+          </td>
+          <td style={{ padding: "8px 10px", color: "#7eb4fa", fontWeight: 700, fontSize: 14 }}>{displayIdx + 1}</td>
+          <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{blocked ? " *" : ""}</td>
+          <td style={{ padding: "8px 10px" }}>
+            <span style={{ color: e.direction === "bullish" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
+              {e.direction === "bullish" ? "LONG" : "SHORT"}
+            </span>
+          </td>
+          <td style={{ padding: "8px 10px" }}>
+            <span style={{ background: e.setupType === "IBO" ? "#7eb4fa22" : "#a78bfa22", color: e.setupType === "IBO" ? "#7eb4fa" : "#a78bfa", padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+              {e.setupType}
+            </span>
+          </td>
+          <td style={{ padding: "8px 10px", color: "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.stopPrice != null ? e.stopPrice.toFixed(e.stopPrice < 10 ? 4 : 2) : "—"}</td>
+          <td style={{ padding: "8px 10px", color: "#22b89a", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.targetPrice != null ? e.targetPrice.toFixed(e.targetPrice < 10 ? 4 : 2) : "—"}</td>
+          <td style={{ padding: "8px 10px" }}>
+            <span style={{ color: e.qualityScore >= 0.6 ? "#22b89a" : e.qualityScore >= 0.5 ? "#cfb95b" : "#888" }}>
+              {(e.qualityScore * 100).toFixed(0)}%
+            </span>
+          </td>
+          <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>
+            {e.barsElapsed}/{e.maxEntryBars}
+          </td>
+          <td style={{ padding: "8px 10px", fontSize: 12 }}>{fmtAge(e.ageMinutes)}</td>
+          <td style={{ padding: "8px 10px", fontSize: 12 }}>{e.pullbackDepth != null ? `${(e.pullbackDepth * 100).toFixed(1)}%` : "—"}</td>
+          <td style={{ padding: "8px 10px" }}>
+            <span style={{ background: blocked ? "#cf5b5b22" : "#cfb95b22", color: blocked ? "#cf5b5b" : "#cfb95b", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
+              {blocked ? "BLOCKED" : e.status}
+            </span>
+          </td>
+        </tr>
+        {isOpen && (
+          <tr style={{ borderBottom: "1px solid #1a1a26" }}>
+            <td colSpan={12} style={{ padding: 0 }}>
+              {/* Mobile-only sticky to keep the detail panel
+                  anchored at the visible viewport's left edge
+                  even when the table itself overflows
+                  horizontally. Same pattern as OpenPositions. */}
+              <div style={mob ? {
+                position: "sticky", left: 0,
+                width: "calc(100vw - 24px)",
+                maxWidth: "100%", boxSizing: "border-box",
+              } : undefined}>
+                <WatchlistDetailPanel entry={e} account={account} mob={mob} />
+              </div>
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    );
+  };
+
+  // Thin tier banner rendered between groups in the table body. Spans
+  // all 12 columns. Uses a colored top border + matching uppercase
+  // label so the tier is unmistakable at a glance even on the
+  // horizontally-scrolling mobile layout.
+  const TierBanner = ({ accent, bg, label, count, sub }) => (
+    <tr style={{ background: bg }}>
+      <td colSpan={12} style={{
+        padding: "8px 12px",
+        borderTop: `2px solid ${accent}`,
+        borderBottom: "1px solid #22222e",
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color: accent,
+      }}>
+        ▸ {label} <span style={{ color: "#666", fontWeight: 600 }}>({count})</span>
+        {sub && (
+          <span style={{ color: "#555", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 12, fontSize: 11 }}>
+            {sub}
+          </span>
+        )}
+      </td>
+    </tr>
+  );
 
   return (
     <>
@@ -2468,93 +2597,31 @@ function Watchlist({ account, mob }) {
                 </tr>
               </thead>
               <tbody>
-                {watchlist.map((e, i) => {
-                  const blocked = openSymbols.has(e.symbol);
-                  const rowKey = `${e.symbol}-${e.scanTime || i}`;
-                  const isOpen = expanded.has(rowKey);
-                  const toggle = () => {
-                    const next = new Set(expanded);
-                    if (isOpen) next.delete(rowKey);
-                    else next.add(rowKey);
-                    setExpanded(next);
-                  };
-                  return (
-                  <Fragment key={rowKey}>
-                  <tr
-                    key={`row-${rowKey}`}
-                    onClick={toggle}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } }}
-                    aria-expanded={isOpen}
-                    style={{
-                      borderBottom: isOpen ? "none" : "1px solid #1a1a26",
-                      opacity: blocked ? 0.45 : 1,
-                      cursor: "pointer",
-                      background: isOpen ? "#22223344" : "transparent",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={(ev) => { if (!isOpen) ev.currentTarget.style.background = "#22223322"; }}
-                    onMouseLeave={(ev) => { if (!isOpen) ev.currentTarget.style.background = "transparent"; }}
-                  >
-                    <td style={{ padding: "8px 6px 8px 10px", color: "#888", fontSize: 14, width: 24, textAlign: "center", userSelect: "none" }} aria-hidden>
-                      {isOpen ? "▾" : "▸"}
-                    </td>
-                    <td style={{ padding: "8px 10px", color: "#7eb4fa", fontWeight: 700, fontSize: 14 }}>{i + 1}</td>
-                    <td style={{ padding: "8px 10px", fontWeight: 600 }}>{e.symbol}{blocked ? " *" : ""}</td>
-                    <td style={{ padding: "8px 10px" }}>
-                      <span style={{ color: e.direction === "bullish" ? "#22b89a" : "#cf5b5b", fontSize: 12, fontWeight: 600 }}>
-                        {e.direction === "bullish" ? "LONG" : "SHORT"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px 10px" }}>
-                      <span style={{ background: e.setupType === "IBO" ? "#7eb4fa22" : "#a78bfa22", color: e.setupType === "IBO" ? "#7eb4fa" : "#a78bfa", padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-                        {e.setupType}
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px 10px", color: "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.stopPrice != null ? e.stopPrice.toFixed(e.stopPrice < 10 ? 4 : 2) : "—"}</td>
-                    <td style={{ padding: "8px 10px", color: "#22b89a", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>{e.targetPrice != null ? e.targetPrice.toFixed(e.targetPrice < 10 ? 4 : 2) : "—"}</td>
-                    <td style={{ padding: "8px 10px" }}>
-                      <span style={{ color: e.qualityScore >= 0.6 ? "#22b89a" : e.qualityScore >= 0.5 ? "#cfb95b" : "#888" }}>
-                        {(e.qualityScore * 100).toFixed(0)}%
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px 10px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 12 }}>
-                      {e.barsElapsed}/{e.maxEntryBars}
-                    </td>
-                    <td style={{ padding: "8px 10px", fontSize: 12 }}>{fmtAge(e.ageMinutes)}</td>
-                    <td style={{ padding: "8px 10px", fontSize: 12 }}>{e.pullbackDepth != null ? `${(e.pullbackDepth * 100).toFixed(1)}%` : "—"}</td>
-                    <td style={{ padding: "8px 10px" }}>
-                      <span style={{ background: blocked ? "#cf5b5b22" : "#cfb95b22", color: blocked ? "#cf5b5b" : "#cfb95b", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-                        {blocked ? "BLOCKED" : e.status}
-                      </span>
-                    </td>
-                  </tr>
-                  {isOpen && (
-                    <tr key={`detail-${rowKey}`} style={{ borderBottom: "1px solid #1a1a26" }}>
-                      <td colSpan={12} style={{ padding: 0 }}>
-                        {/* Mobile-only sticky to keep the detail panel
-                            anchored at the visible viewport's left edge
-                            even when the table itself overflows
-                            horizontally. Same pattern as OpenPositions. */}
-                        <div style={mob ? {
-                          position: "sticky", left: 0,
-                          width: "calc(100vw - 24px)",
-                          maxWidth: "100%", boxSizing: "border-box",
-                        } : undefined}>
-                          <WatchlistDetailPanel entry={e} account={account} mob={mob} />
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  </Fragment>
-                  );
-                })}
+                {ready.length > 0 && (
+                  <TierBanner
+                    accent="#22b89a"
+                    bg="#0d1614"
+                    label="Ready to fire"
+                    count={ready.length}
+                    sub="gate cleared — will execute on next break"
+                  />
+                )}
+                {ready.map((e, i) => renderRow(e, i))}
+                {building.length > 0 && (
+                  <TierBanner
+                    accent="#666"
+                    bg="#14141d"
+                    label="Building observation"
+                    count={building.length}
+                    sub={`needs ${gate} bars in pending — not yet eligible to fire`}
+                  />
+                )}
+                {building.map((e, j) => renderRow(e, ready.length + j))}
               </tbody>
             </table>
           </div>
           <div style={{ padding: "6px 10px", borderTop: "1px solid #1a1a26", fontSize: 10, color: "#555", textAlign: "center" }}>
-            Sorted by quality score (priority queue) · click any row for setup detail · * = symbol has open position (blocked)
+            Sorted by quality score within each tier · click any row for setup detail · * = symbol has open position (blocked)
           </div>
         </div>
       )}
