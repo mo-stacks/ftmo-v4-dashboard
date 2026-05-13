@@ -4,14 +4,18 @@ import { supabase } from './supabaseClient';
 // 2026-05-02: raised 60s → 120s as part of the egress reduction pass.
 // 2026-05-05: raised 120s → 240s after egress audit found the
 // embedded-candles JSONB inside account_state was driving ~1.7 MB per
-// poll. Until the candles-split migration ships (Tier 2), halving the
-// poll cadence is the cheapest way back under the 5 GB/30-day Supabase
-// free-plan budget. Engine cadence (M10 scans, FTMO DD reset) tolerates
-// 4-min polling without UX regression. The forced-refresh handlers
-// (focus / visibilitychange / pageshow / online) already kick a fetch
-// when the user actively brings the tab forward, so the slower interval
-// only affects passive background refresh.
-const REFRESH_INTERVAL = 240 * 1000;
+// poll.
+// 2026-05-11: raised 240s → 300s as belt-and-suspenders after the
+// publisher-side watchlist-candles strip (commit 6033a02) cut payload
+// to ~29 KB gzipped per poll. With the smaller payload + 5-min cadence,
+// projected monthly egress is ~250 MB (vs 5 GB/30d free-plan budget) —
+// comfortable headroom even with 3-5 simultaneous tabs open.
+// Engine cadence (M10 scans, FTMO DD reset) easily tolerates 5-min
+// polling. The forced-refresh handlers (focus / visibilitychange /
+// pageshow / online) still kick a fetch when the user actively brings
+// the tab forward, so the slower interval only affects passive
+// background refresh.
+const REFRESH_INTERVAL = 300 * 1000;
 
 // Balance-snapshot lookback. Was 90 days, dropped to 30 days to shrink
 // the first-load payload (most recent activity is what users care about;
@@ -97,24 +101,31 @@ const ACCOUNT_KEYS = ["challenge", "production", "alpha", "bravo", "charlie", "d
 //   3. engine/run_live.py hardcoded constants (RISK_PCT, MAX_POSITIONS)
 //   4. tools/system_health_state.yaml (cross-tool canonical mirror)
 //
-// Last refreshed: 2026-04-30 (notes field removed; structured fields
-// added; offline doc created at docs/variant_state.md).
+// Last refreshed: 2026-05-07 — trail re-enabled on production + challenge
+// (act 60% / 5% trail / 12R cap, replacing prior "off"); per-symbol risk
+// cap landed (D-031, max_per_symbol_risk_pct=0.016); HARD_CAP 15→24
+// (Phase C-1 / 2026-05-02 — was already live but stale here); crypto
+// class enabled to admit ETHUSD on production + challenge (Phase C-1).
 const VARIANT_CONFIG = {
   production: {
-    account_type:          "FTMO Free Demo",
-    target_pct:            null,           // demo — no profit target
-    quality_gate:          58,
-    entry_delay_bars:      0,
-    partial_trigger_r:     0.6,
-    partial_pct:           0.20,
-    be_move:               "+1.0R decoupled",   // D2 — BE moves only after MFE crosses 1.0R
-    ranking_method:        "quality_score",
-    risk_pct:              0.0080,
-    stop_mode:             "half-fib of pullback",
-    trail:                 "off",
-    slot_mode:             "risk_based",
-    max_floating_risk_pct: 0.045,
-    universe_filter:       "44 syms · no crypto",
+    account_type:           "FTMO Free Demo",
+    target_pct:             null,          // demo — no profit target
+    quality_gate:           58,
+    entry_delay_bars:       0,
+    partial_trigger_r:      0.6,
+    partial_pct:            0.20,
+    be_move:                "+1.0R decoupled",   // D2 — BE moves only after MFE crosses 1.0R
+    ranking_method:         "quality_score",
+    risk_pct:               0.0080,
+    stop_mode:              "half-fib of pullback",
+    trail:                  "C5: act 60% / 5% trail / 12R cap",  // 2026-05-07 RE-ENABLED
+    slot_mode:              "risk_based",
+    max_floating_risk_pct:  0.045,
+    max_per_symbol_risk_pct: 0.016,         // 2026-05-07 D-031 — replaces hard-block
+    max_positions_hard_cap: 24,             // 2026-05-02 Phase C-1 raised 15→24
+    search_start_gate:      100,            // 2026-04-30: engine-validator gate (was 5)
+    h4_confirmation_bars:   1,              // Phase 5 ON
+    universe_filter:        "61 syms · incl ETHUSD",  // 2026-05-02 Phase C-1 enabled crypto class
   },
   challenge: {
     account_type:           "FTMO 2-Step Challenge",
@@ -127,13 +138,14 @@ const VARIANT_CONFIG = {
     ranking_method:         "quality_score",
     risk_pct:               0.0080,
     stop_mode:              "half-fib of pullback",
-    trail:                  "off",
+    trail:                  "C5: act 60% / 5% trail / 12R cap",  // 2026-05-07 RE-ENABLED
     slot_mode:              "risk_based",
     max_floating_risk_pct:  0.045,
-    max_positions_hard_cap: 15,
+    max_per_symbol_risk_pct: 0.016,         // 2026-05-07 D-031 — replaces hard-block
+    max_positions_hard_cap: 24,             // 2026-05-02 Phase C-1 raised 15→24
     search_start_gate:      100,            // 2026-04-30: engine-validator gate (was 5)
     h4_confirmation_bars:   1,              // Phase 5 ON
-    universe_filter:        "34 syms · no crypto",
+    universe_filter:        "61 syms · incl ETHUSD",  // 2026-05-02 Phase C-1 enabled crypto class
   },
   alpha: {
     account_type:      "Spotware Demo",
