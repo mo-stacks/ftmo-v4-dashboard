@@ -70,15 +70,17 @@ const TRADE_HISTORY_COLS = [
 ].join(",");
 
 const VARIANT_META = {
-  production: { label: "Production", fullLabel: "FTMO_PROD — half-fib stop, no trail",       color: "#22b89a", displayId: "17102428", accountId: "47151641" },
+  production: { label: "Production", fullLabel: "FTMO Demo — half-fib stop + Trail 12% (12R cap)", color: "#22b89a", displayId: "17112322", accountId: "47311022" },
   alpha:      { label: "Alpha",      fullLabel: "Alpha — classifier stop, no trail (control)", color: "#7eb4fa", displayId: "5797573",  accountId: "46915262" },
   bravo:      { label: "Bravo",      fullLabel: "Bravo — classifier stop + trail-C5 (forex)", color: "#a78bfa", displayId: "5797576",  accountId: "46915271" },
-  charlie:    { label: "Charlie",    fullLabel: "Charlie — classifier stop + trail-C5",       color: "#cfb95b", displayId: "5797577",  accountId: "46915274" },
-  delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + trail-C5 (+crypto)", color: "#cf5b5b", displayId: "5797579",  accountId: "46915276" },
+  charlie:    { label: "Charlie",    fullLabel: "Charlie — half-fib stop + Trail 5% + V3 mgmt (Production-style port 2026-05-04)", color: "#cfb95b", displayId: "5797577",  accountId: "46915274" },
+  delta:      { label: "Delta",      fullLabel: "Delta — classifier stop + Trail 10% + bundle_match impulse (only)", color: "#cf5b5b", displayId: "5797579",  accountId: "46915276" },
   // 2026-04-30: FTMO 2-Step Challenge added. Same OAuth as Production;
   // bridge auto-routes by accountId (live host for PROD, demo host for Challenge).
-  // Same code path: gate=100 (engine-validator), Phase 5 ON, V3 mgmt, V2 half-fib stop.
-  challenge:  { label: "Challenge",  fullLabel: "Challenge — half-fib stop, gate=100 (V2 + Plan A/B/C)", color: "#cf8f5b", displayId: "7545753",  accountId: "47142181" },
+  // 2026-05-11: Challenge ported to Delta-style config (V1 classifier +
+  // original mgmt + Trail 24%); impulse reverted bundle_match → legacy_tight
+  // 2026-05-12 (commit fcd187c). See docs/variant_state.md for rationale.
+  challenge:  { label: "Challenge",  fullLabel: "Challenge — classifier stop + Trail 24% (Delta-style port 2026-05-11)", color: "#cf8f5b", displayId: "7545753",  accountId: "47142181" },
 };
 
 // Challenge first — primary funded-pathway account; Production (FTMO Free
@@ -118,7 +120,8 @@ const VARIANT_CONFIG = {
     ranking_method:         "quality_score",
     risk_pct:               0.0080,
     stop_mode:              "half-fib of pullback",
-    trail:                  "C5: act 60% / 5% trail / 12R cap",  // 2026-05-07 RE-ENABLED
+    trail:                  "C5: act 60% / 12% trail / 12R cap",  // 2026-05-08 widened 5%→12%
+    impulse_profile:        "legacy_tight",       // tight-leg / IBO_CONFIG override
     slot_mode:              "risk_based",
     max_floating_risk_pct:  0.045,
     max_per_symbol_risk_pct: 0.016,         // 2026-05-07 D-031 — replaces hard-block
@@ -128,24 +131,28 @@ const VARIANT_CONFIG = {
     universe_filter:        "61 syms · incl ETHUSD",  // 2026-05-02 Phase C-1 enabled crypto class
   },
   challenge: {
+    // 2026-05-11: ported to Delta-style config (V1 classifier + original mgmt
+    // + 24% trail) — see docs/variant_state.md. impulse stayed legacy_tight
+    // after the 2026-05-12 revert (commit fcd187c).
     account_type:           "FTMO 2-Step Challenge",
     target_pct:             10,             // Step-1 profit target = 10%
     quality_gate:           58,
     entry_delay_bars:       0,
-    partial_trigger_r:      0.6,
-    partial_pct:            0.20,
-    be_move:                "+1.0R decoupled",
+    partial_trigger_r:      0.5,            // 2026-05-11 ported from Delta (was 0.6)
+    partial_pct:            0.30,           // 2026-05-11 ported from Delta (was 0.20)
+    be_move:                "+0.5R coincident", // 2026-05-11 ported from Delta (was "+1.0R decoupled")
     ranking_method:         "quality_score",
     risk_pct:               0.0080,
-    stop_mode:              "half-fib of pullback",
-    trail:                  "C5: act 60% / 5% trail / 12R cap",  // 2026-05-07 RE-ENABLED
+    stop_mode:              "classifier-computed", // 2026-05-11 ported from Delta (was "half-fib of pullback")
+    trail:                  "C5: act 60% / 24% trail / 12R cap",  // 2026-05-11 ported widened 5%→24%
+    impulse_profile:        "legacy_tight",       // 2026-05-12 reverted from bundle_match (commit fcd187c)
     slot_mode:              "risk_based",
     max_floating_risk_pct:  0.045,
-    max_per_symbol_risk_pct: 0.016,         // 2026-05-07 D-031 — replaces hard-block
-    max_positions_hard_cap: 24,             // 2026-05-02 Phase C-1 raised 15→24
-    search_start_gate:      100,            // 2026-04-30: engine-validator gate (was 5)
-    h4_confirmation_bars:   1,              // Phase 5 ON
-    universe_filter:        "61 syms · incl ETHUSD",  // 2026-05-02 Phase C-1 enabled crypto class
+    max_per_symbol_risk_pct: 0.016,
+    max_positions_hard_cap: 24,
+    search_start_gate:      100,
+    h4_confirmation_bars:   1,
+    universe_filter:        "61 syms · incl ETHUSD",
   },
   alpha: {
     account_type:      "Spotware Demo",
@@ -159,6 +166,7 @@ const VARIANT_CONFIG = {
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "off",                // CONTROL — no trail
+    impulse_profile:   "legacy_tight",
     slot_mode:         "risk_based",
     universe_filter:   "36 syms · incl. ETHUSD",
   },
@@ -174,25 +182,32 @@ const VARIANT_CONFIG = {
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
+    impulse_profile:   "legacy_tight",
     slot_mode:         "risk_based",
     universe_filter:   "17 forex pairs",
   },
   charlie: {
+    // 2026-05-04 deploy: ported to FTMO Production-style config (V2 half-fib
+    // stop + V3 mgmt). Differs from Production in trail width (5% vs 12%)
+    // and accounts (Spotware demo vs FTMO Free).
     account_type:      "Spotware Demo",
     target_pct:        null,
     quality_gate:      58,
     entry_delay_bars:  0,
-    partial_trigger_r: 0.5,
-    partial_pct:       0.30,
-    be_move:           "+0.5R coincident",
+    partial_trigger_r: 0.6,                  // 2026-05-04 ported from Production (was 0.5)
+    partial_pct:       0.20,                 // 2026-05-04 ported from Production (was 0.30)
+    be_move:           "+1.0R decoupled",    // 2026-05-04 ported from Production (was "+0.5R coincident")
     ranking_method:    "quality_score",
     risk_pct:          0.0080,
-    stop_mode:         "classifier-computed",
-    trail:             "C5: act 60% / 10% trail / 12R cap",
+    stop_mode:         "half-fib of pullback", // 2026-05-04 ported from Production (was "classifier-computed")
+    trail:             "C5: act 60% / 5% trail / 12R cap", // 2026-05-04 deploy: tighter trail than Production (5% vs 12%)
+    impulse_profile:   "legacy_tight",
     slot_mode:         "risk_based",
     universe_filter:   "35 syms",
   },
   delta: {
+    // Only variant on bundle_match impulse profile — primary A/B testing
+    // dimension for the wide-leg dataclass-defaults manifest.
     account_type:      "Spotware Demo",
     target_pct:        null,
     quality_gate:      58,
@@ -204,6 +219,7 @@ const VARIANT_CONFIG = {
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
+    impulse_profile:   "bundle_match",       // 2026-05-09 — only variant on bundle_match
     slot_mode:         "risk_based",
     universe_filter:   "36 syms · incl. ETHUSD",
   },

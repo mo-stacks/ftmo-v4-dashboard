@@ -522,7 +522,9 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
           Full prose notes live offline in docs/variant_state.md (refreshed
           on every Rule-2 deploy). Columns prioritized to surface ACTUAL
           per-variant differences: Account / Q-gate / Partial / BE / Risk /
-          Stop / Trail / Universe. */}
+          Stop / Trail / Impulse / Universe. The Impulse column was added
+          2026-05-13 — Delta is the only variant on bundle_match, the
+          primary A/B testing dimension for the strategy manifest. */}
       <SectionHeader>Variant Configuration</SectionHeader>
       <div style={{ background: "#13131c", borderRadius: 10, border: "1px solid #22222e", overflow: "hidden", marginBottom: 14 }}>
         <div style={{ overflowX: "auto" }}>
@@ -536,8 +538,9 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                   ["Partial",   "Partial-close trigger and size (e.g. 20%@0.6R = close 20% at +0.6R MFE)"],
                   ["BE",        "Break-even rule: coincident with partial vs decoupled (D2 — BE moves only after MFE crosses N R)"],
                   ["Risk",      "Per-trade risk as % of balance (engine constant; restart-bound)"],
-                  ["Stop",      "Stop placement strategy (classifier = V1, pivot_half_fib = V2)"],
-                  ["Trail",     "Trailing-stop mode (off / C5 = act-60% / 10%-trail / 12R-ceiling)"],
+                  ["Stop",      "Stop placement strategy (classifier-computed = V1 wide stop, half-fib of pullback = V2 tight stop)"],
+                  ["Trail",     "Trailing-stop mode. C5 = activate at 60% of target distance from entry; trail % is per-variant (Production 12%, Challenge 24%, Charlie 5%, Bravo/Delta 10%, Alpha off); 12R safety ceiling (broker TP swaps from 1.272 Fib → 12R on activation)"],
+                  ["Impulse",   "Impulse profile: legacy_tight = tight-leg / IBO_CONFIG override (5 of 6 variants); bundle_match = wide-leg / dataclass-defaults (Delta only — primary A/B test dimension)"],
                   ["Universe",  "Active instrument set"],
                 ].map(([h, title]) => (
                   <th key={h} title={title}
@@ -586,6 +589,12 @@ function MainDashboard({ mob, onSelectAccount, ACCOUNTS, ACCOUNT_KEYS }) {
                     </td>
                     <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", color: "#7eb4fa" }}>{c.stop_mode ?? "—"}</td>
                     <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", color: trailColor }}>{c.trail ?? "—"}</td>
+                    {/* Impulse profile column (added 2026-05-13). Highlights Delta as
+                        the only variant on bundle_match — primary A/B test dimension. */}
+                    <td style={{ padding: "10px 12px", fontFamily: "'Space Grotesk', ui-monospace, monospace", fontSize: 11,
+                                 color: c.impulse_profile === "bundle_match" ? "#cf8f5b" : "#888" }}>
+                      {c.impulse_profile ?? "—"}
+                    </td>
                     <td style={{ padding: "10px 12px", color: "#aaa", fontSize: 11 }}>{c.universe_filter ?? "—"}</td>
                   </tr>
                 );
