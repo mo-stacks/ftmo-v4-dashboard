@@ -116,64 +116,67 @@ const VARIANT_CONFIG = {
     entry_delay_bars:       0,
     partial_trigger_r:      0.6,
     partial_pct:            0.20,
-    be_move:                "+1.0R decoupled",   // D2 — BE moves only after MFE crosses 1.0R
+    be_move:                "+1.0R decoupled",   // V3 mgmt — BE decoupled from partial
     ranking_method:         "quality_score",
     risk_pct:               0.0080,
     stop_mode:              "half-fib of pullback",
     trail:                  "C5: act 60% / 12% trail / 12R cap",  // 2026-05-08 widened 5%→12%
     impulse_profile:        "legacy_tight",       // tight-leg / IBO_CONFIG override
     slot_mode:              "risk_based",
-    max_floating_risk_pct:  0.045,
-    max_per_symbol_risk_pct: 0.016,         // 2026-05-07 D-031 — replaces hard-block
-    max_positions_hard_cap: 24,             // 2026-05-02 Phase C-1 raised 15→24
-    search_start_gate:      100,            // 2026-04-30: engine-validator gate (was 5)
-    h4_confirmation_bars:   1,              // Phase 5 ON
-    universe_filter:        "61 syms · incl ETHUSD",  // 2026-05-02 Phase C-1 enabled crypto class
-  },
-  challenge: {
-    // 2026-05-11: ported to Delta-style config (V1 classifier + original mgmt
-    // + 24% trail) — see docs/variant_state.md. impulse stayed legacy_tight
-    // after the 2026-05-12 revert (commit fcd187c).
-    account_type:           "FTMO 2-Step Challenge",
-    target_pct:             10,             // Step-1 profit target = 10%
-    quality_gate:           58,
-    entry_delay_bars:       0,
-    partial_trigger_r:      0.5,            // 2026-05-11 ported from Delta (was 0.6)
-    partial_pct:            0.30,           // 2026-05-11 ported from Delta (was 0.20)
-    be_move:                "+0.5R coincident", // 2026-05-11 ported from Delta (was "+1.0R decoupled")
-    ranking_method:         "quality_score",
-    risk_pct:               0.0080,
-    stop_mode:              "classifier-computed", // 2026-05-11 ported from Delta (was "half-fib of pullback")
-    trail:                  "C5: act 60% / 24% trail / 12R cap",  // 2026-05-11 ported widened 5%→24%
-    impulse_profile:        "legacy_tight",       // 2026-05-12 reverted from bundle_match (commit fcd187c)
-    slot_mode:              "risk_based",
-    max_floating_risk_pct:  0.045,
+    max_floating_risk_pct:  0.080,                // 2026-05-14 Plan A widened 4.5%→8.0%
     max_per_symbol_risk_pct: 0.016,
     max_positions_hard_cap: 24,
     search_start_gate:      100,
     h4_confirmation_bars:   1,
-    universe_filter:        "61 syms · incl ETHUSD",
+    universe_filter:        "ftmo_full (74 syms − exclusions)",
+  },
+  challenge: {
+    // 2026-05-14 C-REVERT (commit 882330e): reverted from V1 wrapper +
+    // bundle_match (May 11 Delta-config port) back to canonical V2 half-fib
+    // + V3 mgmt + bundle_match + Trail 12%. Now the canonical config the
+    // project has been building toward. Forms a clean impulse-only A/B vs
+    // PROD (same wrapper, Challenge=bundle_match / PROD=legacy_tight).
+    account_type:           "FTMO 2-Step Challenge",
+    target_pct:             10,
+    quality_gate:           58,
+    entry_delay_bars:       0,
+    partial_trigger_r:      0.6,                  // 2026-05-14 reverted to V3 (was 0.5)
+    partial_pct:            0.20,                 // 2026-05-14 reverted to V3 (was 0.30)
+    be_move:                "+1.0R decoupled",    // 2026-05-14 reverted to V3 (was "+0.5R coincident")
+    ranking_method:         "quality_score",
+    risk_pct:               0.0080,
+    stop_mode:              "half-fib of pullback", // 2026-05-14 reverted to V2 (was "classifier-computed")
+    trail:                  "C5: act 60% / 12% trail / 12R cap", // 2026-05-14 reverted (was 24%)
+    impulse_profile:        "bundle_match",       // 2026-05-14 C-REVERT — back to bundle_match (was legacy_tight)
+    slot_mode:              "risk_based",
+    max_floating_risk_pct:  0.080,                // 2026-05-14 Plan A widened 4.5%→8.0%
+    max_per_symbol_risk_pct: 0.016,
+    max_positions_hard_cap: 24,
+    search_start_gate:      100,
+    h4_confirmation_bars:   1,
+    universe_filter:        "ftmo_full (74 syms − exclusions)",
   },
   alpha: {
     account_type:      "Spotware Demo",
     target_pct:        null,
-    quality_gate:      58,
+    quality_gate:      63,                          // 2026-05-14 Spotware Q-gate raised 58→63
     entry_delay_bars:  0,
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
-    be_move:           "+0.5R coincident",   // BE moves with partial fire
+    be_move:           "+0.5R coincident",         // BE moves with partial fire
     ranking_method:    "quality_score",
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
-    trail:             "off",                // CONTROL — no trail
+    trail:             "off",                       // CONTROL — no trail
     impulse_profile:   "legacy_tight",
-    slot_mode:         "risk_based",
-    universe_filter:   "36 syms · incl. ETHUSD",
+    slot_mode:         "count_based",               // 2026-05-14 Alpha/Bravo/Delta on count-based slots
+    max_positions_hard_cap: 8,                      // count-based: 5 active, hard ceiling 8
+    universe_filter:   "spotware_full (36 syms)",
   },
   bravo: {
     account_type:      "Spotware Demo",
     target_pct:        null,
-    quality_gate:      58,
+    quality_gate:      63,                          // 2026-05-14 Spotware Q-gate raised 58→63
     entry_delay_bars:  0,
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
@@ -183,34 +186,41 @@ const VARIANT_CONFIG = {
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
     impulse_profile:   "legacy_tight",
-    slot_mode:         "risk_based",
-    universe_filter:   "17 forex pairs",
+    slot_mode:         "count_based",
+    max_positions_hard_cap: 8,
+    universe_filter:   "forex_only (17 forex pairs)",
   },
   charlie: {
     // 2026-05-04 deploy: ported to FTMO Production-style config (V2 half-fib
     // stop + V3 mgmt). Differs from Production in trail width (5% vs 12%)
-    // and accounts (Spotware demo vs FTMO Free).
+    // and floating-risk cap (4.5% vs PROD 8%). Charlie kept on RISK 4.5%
+    // through 2026-05-14 Plan A widening (PROD/Challenge moved to 8%).
     account_type:      "Spotware Demo",
     target_pct:        null,
-    quality_gate:      58,
+    quality_gate:      63,                          // 2026-05-14 Spotware Q-gate raised 58→63
     entry_delay_bars:  0,
-    partial_trigger_r: 0.6,                  // 2026-05-04 ported from Production (was 0.5)
-    partial_pct:       0.20,                 // 2026-05-04 ported from Production (was 0.30)
-    be_move:           "+1.0R decoupled",    // 2026-05-04 ported from Production (was "+0.5R coincident")
+    partial_trigger_r: 0.6,
+    partial_pct:       0.20,
+    be_move:           "+1.0R decoupled",
     ranking_method:    "quality_score",
     risk_pct:          0.0080,
-    stop_mode:         "half-fib of pullback", // 2026-05-04 ported from Production (was "classifier-computed")
-    trail:             "C5: act 60% / 5% trail / 12R cap", // 2026-05-04 deploy: tighter trail than Production (5% vs 12%)
+    stop_mode:         "half-fib of pullback",
+    trail:             "C5: act 60% / 5% trail / 12R cap",
     impulse_profile:   "legacy_tight",
     slot_mode:         "risk_based",
-    universe_filter:   "35 syms",
+    max_floating_risk_pct:  0.045,                  // unchanged — narrow-cap A/B vs PROD's 8%
+    max_per_symbol_risk_pct: 0.016,
+    max_positions_hard_cap: 24,
+    universe_filter:   "spotware_full (36 syms)",
   },
   delta: {
-    // Only variant on bundle_match impulse profile — primary A/B testing
-    // dimension for the wide-leg dataclass-defaults manifest.
+    // The live bundle_match validator on the Spotware side. 2026-05-14
+    // Challenge revert means Challenge ALSO runs bundle_match now, but
+    // Delta is the V1 wrapper variant — Challenge is V2+V3 — so the two
+    // bundle_match deployments differ on wrapper, not on impulse profile.
     account_type:      "Spotware Demo",
     target_pct:        null,
-    quality_gate:      58,
+    quality_gate:      63,                          // 2026-05-14 Spotware Q-gate raised 58→63
     entry_delay_bars:  0,
     partial_trigger_r: 0.5,
     partial_pct:       0.30,
@@ -219,11 +229,21 @@ const VARIANT_CONFIG = {
     risk_pct:          0.0080,
     stop_mode:         "classifier-computed",
     trail:             "C5: act 60% / 10% trail / 12R cap",
-    impulse_profile:   "bundle_match",       // 2026-05-09 — only variant on bundle_match
-    slot_mode:         "risk_based",
-    universe_filter:   "36 syms · incl. ETHUSD",
+    impulse_profile:   "bundle_match",              // V1 wrapper + bundle_match — distinct from Challenge's V2+V3
+    slot_mode:         "count_based",
+    max_positions_hard_cap: 8,
+    universe_filter:   "spotware_full (36 syms)",
   },
 };
+
+// Plan A''' Option α (deployed 2026-05-14 across all 6 engines):
+// widened the safety buffers below the FTMO daily-DD floor so the
+// engine pauses / emergency-closes earlier and avoids breaching the
+// 5% daily limit. Both buffers are constants — same value on every
+// variant. Per-variant absolute pause/emergency $ thresholds are
+// computed from each variant's day_start_balance (see DD bar render).
+const DAILY_DD_SAFETY_BUFFER    = 1500;  // $ above daily floor → pause trading
+const DAILY_DD_EMERGENCY_BUFFER = 1000;  // $ above daily floor → force-close positions
 
 // Known-incident carve-outs. Remove entries once root cause is fixed
 // upstream and you want to re-verify the dashboard against raw data.
@@ -855,6 +875,16 @@ export function useSupabaseData() {
               };
             })()),
             dailyDdLimit: 5000,
+            // Plan A''' Option α (deployed 2026-05-14): per-variant pause +
+            // emergency thresholds derived from day_start. Engine pauses
+            // trading when equity ≤ pauseThreshold, emergency-closes
+            // positions when equity ≤ emergencyThreshold. Both are above
+            // the FTMO daily floor by the configured buffers — provides
+            // runway to react before breach.
+            dailyPauseThreshold:     dayStartRaw != null ? Math.round((dayStartRaw - 5000 + DAILY_DD_SAFETY_BUFFER)    * 100) / 100 : null,
+            dailyEmergencyThreshold: dayStartRaw != null ? Math.round((dayStartRaw - 5000 + DAILY_DD_EMERGENCY_BUFFER) * 100) / 100 : null,
+            dailyPauseBuffer:        DAILY_DD_SAFETY_BUFFER,
+            dailyEmergencyBuffer:    DAILY_DD_EMERGENCY_BUFFER,
             tradingPaused: false,
             // 2026-05-04 — these fields exist in the engine state file
             // (watchlist_state_<variant>.json) as h4_scans / m10_scans /

@@ -935,6 +935,32 @@ function EngineStatus({ account, mob, lastUpdated, refetch }) {
                 Realized today: {s.dailyPnlRealized >= 0 ? "+" : ""}${s.dailyPnlRealized.toFixed(2)}
               </div>
             )}
+            {/* Plan A''' Option α threshold lines (added 2026-05-14):
+                shows the engine's pause + emergency-close trigger points
+                so the user can see how much equity-room remains before
+                the engine intervenes ahead of the FTMO floor itself. */}
+            {(s.dailyPauseThreshold != null || s.dailyEmergencyThreshold != null) && (
+              <div style={{ fontSize: 10, color: "#555", marginTop: 4, display: "flex", flexDirection: "column", gap: 1 }}>
+                {s.dailyPauseThreshold != null && (
+                  <div>
+                    <span style={{ color: "#cfb95b" }}>⏸</span> Pause at{" "}
+                    <span style={{ color: "#cfb95b", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
+                      ${s.dailyPauseThreshold.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}
+                    </span>
+                    {s.dailyPauseBuffer && <span style={{ color: "#444" }}> (${s.dailyPauseBuffer.toLocaleString()} buffer)</span>}
+                  </div>
+                )}
+                {s.dailyEmergencyThreshold != null && (
+                  <div>
+                    <span style={{ color: "#cf5b5b" }}>⛔</span> Emergency at{" "}
+                    <span style={{ color: "#cf5b5b", fontFamily: "'Space Grotesk', ui-monospace, monospace" }}>
+                      ${s.dailyEmergencyThreshold.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}
+                    </span>
+                    {s.dailyEmergencyBuffer && <span style={{ color: "#444" }}> (${s.dailyEmergencyBuffer.toLocaleString()} buffer)</span>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {/* Trailing DD */}
           <div>
