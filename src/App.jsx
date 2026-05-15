@@ -11,6 +11,7 @@ import {
 import { useSupabaseData } from "./useSupabaseData.js";
 import { supabase } from "./supabaseClient.js";
 import { useTradeAlerts } from "./useTradeAlerts.js";
+import { useWatchlistCandles } from "./useWatchlistCandles.js";
 import AlertCenter from "./AlertCenter.jsx";
 import { VARIANT_CHANGE_EVENTS, attachChangeEvents } from "./changeEvents.js";
 
@@ -2132,6 +2133,15 @@ function WatchlistDetailPanel({ entry, account, mob }) {
     return () => clearInterval(id);
   }, []);
 
+  // Lazy-fetch the setup-chart candles (added 2026-05-15). The publisher
+  // strips watchlist candles from the bulk poll for egress reasons (see
+  // useWatchlistCandles.js). On row expand we hit get_watchlist_candles()
+  // RPC, cache the result client-side for 5 min, and merge into the entry
+  // before passing to SetupChart. Cost: ~10 KB per expansion, ~15 MB/month
+  // at typical usage — negligible vs the 5 GB cap.
+  const { candles: lazyCandles, loading: candlesLoading } =
+    useWatchlistCandles(account?.key, entry?.symbol);
+
   const e = entry;
   const instType = e.instType || inferInstType(e.symbol);
   const gate = computeGateEta(e.scanTime, instType);
@@ -2182,7 +2192,14 @@ function WatchlistDetailPanel({ entry, account, mob }) {
   // This projection approximates that fire-time value so the watchlist
   // preview matches the live geometry (was: a NZDJPY watchlist preview
   // suggested RR ~1.5 but the live position fired at RR > 5).
-  const projection = computeProjectedStop(e, account?.config);
+  // Use the lazy-fetched candles for the projection compute too — without
+  // them, computeProjectedStop returns null because the bulk-poll watchlist
+  // entry carries `candles: {}` (per the 2026-05-11 egress strip). With
+  // them, V2 variants get the amber "Proj. Stop" line on the SetupChart.
+  const eForProjection = (lazyCandles && (lazyCandles.h4?.length || lazyCandles.m10?.length))
+    ? { ...e, candles: { ...(e.candles || {}), ...lazyCandles } }
+    : e;
+  const projection = computeProjectedStop(eForProjection, account?.config);
   const projStop = projection?.projectedStop ?? null;
   let projectedRR = null;
   if (projStop != null && brk != null && e.targetPrice != null) {
@@ -2246,7 +2263,14 @@ function WatchlistDetailPanel({ entry, account, mob }) {
       borderTop: "1px solid #1a1a26",
       borderBottom: "1px solid #1a1a26",
     }}>
-      {/* Chart (lazy-loaded) */}
+      {/* Chart (lazy-loaded). Two layers of "loading":
+          1. Suspense fallback while the SetupChart bundle (~170 KB)
+             code-splits into memory on first expansion.
+          2. candlesLoading from useWatchlistCandles — the lazy RPC
+             that fetches the candle JSONB for this (variant, symbol).
+             Shown when the SetupChart bundle is loaded but candles
+             aren't back yet. Once candles arrive (cached for 5 min),
+             re-expansions render instantly. */}
       <div style={{ marginBottom: mob ? 10 : 12 }}>
         <Suspense fallback={
           <div style={{
@@ -2254,14 +2278,32 @@ function WatchlistDetailPanel({ entry, account, mob }) {
             padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
           }}>Loading chart…</div>
         }>
-          {/* Augment the entry with the projected fire-time stop so
-              SetupChart can render the amber "Proj. Stop" line. Pure
-              addition — original entry untouched, classifier stopPrice
-              still passed through. */}
-          <SetupChart
-            entry={projStop != null ? { ...entry, projectedStopPrice: projStop } : entry}
-            height={mob ? 220 : 280}
-          />
+          {candlesLoading && !(lazyCandles?.h4?.length || lazyCandles?.m10?.length) ? (
+            <div style={{
+              background: "#0e0e15", borderRadius: mob ? 6 : 8, border: "1px solid #1a1a26",
+              padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
+              minHeight: mob ? 220 : 280,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>Fetching candles…</div>
+          ) : (
+            /* Augment the entry with:
+                 - projected fire-time stop (so SetupChart can render the
+                   amber "Proj. Stop" line)
+                 - lazy-fetched candles (merged on top of any candles the
+                   bulk poll provided; for watchlist that's currently {})
+               Both are pure additions — original entry untouched. */
+            <SetupChart
+              entry={{
+                ...entry,
+                ...(projStop != null ? { projectedStopPrice: projStop } : {}),
+                candles: {
+                  ...(entry?.candles || {}),
+                  ...(lazyCandles    || {}),
+                },
+              }}
+              height={mob ? 220 : 280}
+            />
+          )}
         </Suspense>
       </div>
 
