@@ -69,6 +69,31 @@ const TRADE_HISTORY_COLS = [
   // NOTE: `candles` deliberately omitted — fetched on-demand
 ].join(",");
 
+// Explicit column list for account_state fetches (contract T4,
+// docs/process/EGRESS_SAFE_DATA_CONTRACT_2026_07_08.md §2/§7). Union of
+// every column the dashboard actually consumes (Rule-16 safety scalars +
+// the live-tile fields below) — grepped against this file + App.jsx.
+// Deliberately does NOT include `candles` (never written into
+// account_state per contract §1 C-1) and does NOT include any phantom
+// column (`equityIsApproximate`, `daily_floor`, `daily_dd_emergency_floor`,
+// `buffer_to_breach`, `last_publish_ts`, `day_start`) — those columns do
+// not exist on the real table and would 400 the whole read. Approximate
+// equity is signaled by `equity === null`, not a boolean flag.
+const ACCOUNT_STATE_COLS = [
+  "variant", "account_id", "balance", "equity", "day_start_balance",
+  "daily_pnl", "daily_dd_used", "trailing_dd", "open_positions",
+  "slot_mode", "trailing_enabled", "recycling_enabled",
+  "positions", "watchlist", "scan_activity", "engine_status",
+  "next_h4_scan", "h4_scans", "m10_scans", "trades_placed", "updated_at",
+].join(",");
+
+// Explicit column list for balance_snapshots fetches. Only `variant`,
+// `timestamp`, `balance`, `equity` are consumed (see the balanceCurve /
+// maxDD computation below) — no candle/JSONB blob exists on this table,
+// but per the egress gate's structural assert #2 (no `select('*')` on a
+// polled/first-loaded table) it still needs an explicit projection.
+const BALANCE_SNAPSHOTS_COLS = ["variant", "timestamp", "balance", "equity"].join(",");
+
 const VARIANT_META = {
   production: { label: "Production", fullLabel: "FTMO Demo — half-fib stop + Trail 12% (12R cap)", color: "#22b89a", displayId: "17112322", accountId: "47311022" },
   alpha:      { label: "Alpha",      fullLabel: "Alpha — classifier stop, no trail (control)", color: "#7eb4fa", displayId: "5797573",  accountId: "46915262" },
@@ -399,7 +424,7 @@ export function useSupabaseData() {
             .order('exit_time', { ascending: false });
 
       const [stateRes, tradeRes] = await Promise.all([
-        supabase.from('account_state').select('*'),
+        supabase.from('account_state').select(ACCOUNT_STATE_COLS),
         tradesQuery,
       ]);
 
@@ -447,7 +472,7 @@ export function useSupabaseData() {
           const end = Math.min(offset + PAGE_SIZE - 1, MAX_ROWS - 1);
           const pageRes = await supabase
             .from('balance_snapshots')
-            .select('*')
+            .select(BALANCE_SNAPSHOTS_COLS)
             .gte('timestamp', cutoffIso)
             .order('timestamp', { ascending: false })
             .range(offset, end);
@@ -464,7 +489,7 @@ export function useSupabaseData() {
       } else {
         const deltaRes = await supabase
           .from('balance_snapshots')
-          .select('*')
+          .select(BALANCE_SNAPSHOTS_COLS)
           .gt('timestamp', lastSnapshotTsRef.current)
           .order('timestamp', { ascending: true });
         if (deltaRes.error) throw deltaRes.error;

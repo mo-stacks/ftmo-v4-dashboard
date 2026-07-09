@@ -1137,6 +1137,15 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
 
   const p = position;
 
+  // Lazy-fetch position-symbol candles (contract T2). Post-T1 the polled
+  // `account_state.positions[].candles` is always `{}` (publisher no
+  // longer embeds OHLC there); the publisher instead registers every
+  // open-position symbol into `symbol_candles_cache` (same table/RPC the
+  // watchlist detail panel uses), so we fetch here on row-expand exactly
+  // like WatchlistDetailPanel does — never from the bridge in the browser.
+  const { candles: lazyCandles, loading: candlesLoading } =
+    useWatchlistCandles(account?.key, p.symbol);
+
   // Derive distances from current price to stop / target. These are the
   // most-asked-about numbers when watching a live trade.
   let distToStop = null, distToTarget = null, rMultipleNow = null;
@@ -1217,7 +1226,10 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
   // entry/stop/target as the relevant lines.
   const chartEntry = {
     symbol: p.symbol,
-    candles: p.candles,
+    // Merge on top of any candles the bulk poll provided (always `{}`
+    // post-T1) with the lazy-fetched RPC result — same on-demand pattern
+    // as WatchlistDetailPanel (useWatchlistCandles.js).
+    candles: { ...(p.candles || {}), ...(lazyCandles || {}) },
     direction: p.side === "BUY" ? "bullish" : "bearish",
     // 2026-05-03: position-panel chart shows position-relevant lines only.
     // Previously this re-used the watchlist-shaped chart props with hacky
@@ -1247,7 +1259,9 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
       borderTop: "1px solid #1a1a26",
       borderBottom: "1px solid #1a1a26",
     }}>
-      {/* Chart (lazy-loaded) */}
+      {/* Chart (lazy-loaded). Two layers of "loading", same pattern as
+          WatchlistDetailPanel: Suspense for the SetupChart bundle, then
+          candlesLoading for the useWatchlistCandles RPC fetch. */}
       <div style={{ marginBottom: mob ? 10 : 12 }}>
         <Suspense fallback={
           <div style={{
@@ -1255,7 +1269,16 @@ function PositionDetailPanel({ position, account, mob, trailEngaged }) {
             padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
           }}>Loading chart…</div>
         }>
-          <SetupChart entry={chartEntry} height={mob ? 220 : 280} />
+          {candlesLoading && !(lazyCandles?.h4?.length || lazyCandles?.m10?.length) ? (
+            <div style={{
+              background: "#0e0e15", borderRadius: mob ? 6 : 8, border: "1px solid #1a1a26",
+              padding: 16, textAlign: "center", color: "#555", fontSize: 11, fontStyle: "italic",
+              minHeight: mob ? 220 : 280,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>Fetching candles…</div>
+          ) : (
+            <SetupChart entry={chartEntry} height={mob ? 220 : 280} />
+          )}
         </Suspense>
       </div>
 
